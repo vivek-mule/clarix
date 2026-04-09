@@ -28,18 +28,33 @@ _backend_dir = str(Path(__file__).resolve().parent.parent)
 if _backend_dir not in sys.path:
     sys.path.insert(0, _backend_dir)
 
-from app.core.config import settings  # noqa: E402
+from config import settings  # noqa: E402
 
 # ── Constants ───────────────────────────────────────────────
 DIMENSION = 384
 METRIC = "cosine"
 
-# ── Client & index singleton ───────────────────────────────
-_pc = Pinecone(api_key=settings.pinecone_api_key)
+_pc = None
+_index = None
 
 
-def _get_or_create_index():
-    """Return a handle to the Pinecone index, creating it if it doesn't exist."""
+def _ensure_index():
+    """
+    Lazily initialise the Pinecone client/index.
+
+    This avoids crashing the entire FastAPI app at import time when Pinecone
+    env vars are not configured yet (common during initial setup).
+    """
+    global _pc, _index
+
+    if _index is not None:
+        return _index
+
+    api_key = (settings.pinecone_api_key or "").strip()
+    if not api_key:
+        return None
+
+    _pc = Pinecone(api_key=api_key)
     existing_names = [idx.name for idx in _pc.list_indexes()]
     if settings.pinecone_index_name not in existing_names:
         _pc.create_index(
@@ -48,10 +63,8 @@ def _get_or_create_index():
             metric=METRIC,
             spec=ServerlessSpec(cloud="aws", region=settings.pinecone_environment),
         )
-    return _pc.Index(settings.pinecone_index_name)
-
-
-_index = _get_or_create_index()
+    _index = _pc.Index(settings.pinecone_index_name)
+    return _index
 
 
 # ── Public API ──────────────────────────────────────────────
@@ -75,10 +88,15 @@ def upsert_vectors(
     Returns:
         Total number of vectors upserted.
     """
+    index = _ensure_index()
+    if index is None:
+        # Pinecone not configured yet; treat as no-op so server can run.
+        return 0
+
     upserted = 0
     for i in range(0, len(vectors), batch_size):
         batch = vectors[i : i + batch_size]
-        _index.upsert(vectors=batch, namespace=namespace)
+        index.upsert(vectors=batch, namespace=namespace)
         upserted += len(batch)
     return upserted
 
@@ -101,7 +119,11 @@ def query_vectors(
     Returns:
         A list of dicts with keys: id, score, metadata.
     """
-    results = _index.query(
+    index = _ensure_index()
+    if index is None:
+        return []
+
+    results = index.query(
         vector=vector,
         top_k=top_k,
         namespace=namespace,

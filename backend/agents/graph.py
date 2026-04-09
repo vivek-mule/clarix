@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import asyncio
 from datetime import datetime, timezone
-from typing import Literal
+from typing import Literal, Optional
 
 from langgraph.graph import StateGraph, START, END
 
@@ -233,7 +233,7 @@ app_graph = compile()
 async def run_session(
     student_id: str,
     message: str = "",
-    existing_state: AgentState | None = None,
+    existing_state: Optional[AgentState] = None,
 ) -> AgentState:
     """
     Run (or continue) a learning session for a student.
@@ -254,11 +254,12 @@ async def run_session(
     """
     # Build initial state
     if existing_state:
-        initial_state: AgentState = {
-            **existing_state,
-            "student_id": student_id,
-            "stream_output": [],  # always reset stream for new invocation
-        }
+        # Reuse the same dict object so other coroutines (SSE) can observe
+        # stream_output growth while the graph runs.
+        initial_state = existing_state
+        initial_state["student_id"] = student_id
+        initial_state["stream_output"] = []  # always reset stream for new invocation
+
         # Append the new message
         if message:
             msgs = list(initial_state.get("messages", []))

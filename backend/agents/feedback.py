@@ -118,19 +118,15 @@ def feedback_agent(state: AgentState) -> AgentState:
         try:
             questions = json.loads(raw)
         except json.JSONDecodeError:
-            return {
-                **state,
-                "current_agent": "feedback",
-                "quiz_results": {"error": "Failed to generate quiz questions"},
-                "mastery_score": 0.0,
-            }
+            state["current_agent"] = "feedback"
+            state["quiz_results"] = {"error": "Failed to generate quiz questions"}
+            state["mastery_score"] = 0.0
+            return state
 
-        return {
-            **state,
-            "current_agent": "feedback",
-            "quiz_results": {"questions": questions, "awaiting_answers": True},
-            "mastery_score": 0.0,
-        }
+        state["current_agent"] = "feedback"
+        state["quiz_results"] = {"questions": questions, "awaiting_answers": True}
+        state["mastery_score"] = 0.0
+        return state
 
     # ── Phase 2: Evaluate student answers ───────────────────
     student_answers_raw = ""
@@ -143,12 +139,10 @@ def feedback_agent(state: AgentState) -> AgentState:
             break
 
     if not student_answers_raw:
-        return {
-            **state,
-            "current_agent": "feedback",
-            "quiz_results": {"questions": questions, "awaiting_answers": True},
-            "mastery_score": 0.0,
-        }
+        state["current_agent"] = "feedback"
+        state["quiz_results"] = {"questions": questions, "awaiting_answers": True}
+        state["mastery_score"] = 0.0
+        return state
 
     eval_messages = [
         SystemMessage(content=EVALUATE_QUIZ_PROMPT.format(
@@ -174,7 +168,9 @@ def feedback_agent(state: AgentState) -> AgentState:
     mastery_score = round(correct_count / total, 2)
 
     # ── Build detailed feedback stream ──────────────────────
-    stream_output: list[str] = []
+    # Important: mutate state["stream_output"] as tokens arrive so the SSE
+    # endpoint can stream in real-time while the graph is running.
+    state["stream_output"] = []
     feedback_messages = [
         SystemMessage(content=(
             f"Summarise the quiz results for the student in an encouraging, "
@@ -190,17 +186,14 @@ def feedback_agent(state: AgentState) -> AgentState:
     for chunk in llm.stream(feedback_messages):
         token = chunk.content
         if token:
-            stream_output.append(token)
+            state["stream_output"].append(token)
 
-    return {
-        **state,
-        "current_agent": "feedback",
-        "quiz_results": {
-            "questions": questions,
-            "evaluations": evaluations,
-            "correct": correct_count,
-            "total": total,
-        },
-        "mastery_score": mastery_score,
-        "stream_output": stream_output,
+    state["current_agent"] = "feedback"
+    state["quiz_results"] = {
+        "questions": questions,
+        "evaluations": evaluations,
+        "correct": correct_count,
+        "total": total,
     }
+    state["mastery_score"] = mastery_score
+    return state

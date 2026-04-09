@@ -11,6 +11,8 @@ comes from the verified token — never from the request body or URL.
 
 from __future__ import annotations
 
+from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
@@ -33,7 +35,7 @@ class ProfileResponse(BaseModel):
     name: str
     subject: str
     onboarding_complete: bool
-    learning_style: str | None
+    learning_style: Optional[str]
     knowledge_levels: dict
     learning_path: list
     current_module_index: int

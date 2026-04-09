@@ -7,6 +7,8 @@ quiz results for analytics and progress tracking.
 
 from __future__ import annotations
 
+from typing import Optional
+
 from auth.supabase_client import supabase_admin
 
 TABLE = "quiz_attempts"
@@ -17,7 +19,7 @@ def save_quiz_attempt(
     module_topic: str,
     score: float,
     questions: list[dict],
-    attempt_number: int | None = None,
+    attempt_number: Optional[int] = None,
 ) -> dict:
     """
     Insert a quiz attempt record into the quiz_attempts table.
@@ -64,7 +66,7 @@ def get_attempts_for_topic(student_id: str, module_topic: str) -> list[dict]:
     return res.data or []
 
 
-def get_latest_attempt(student_id: str, module_topic: str) -> dict | None:
+def get_latest_attempt(student_id: str, module_topic: str) -> Optional[dict]:
     """Return the most recent quiz attempt for a student on a topic."""
     res = (
         supabase_admin

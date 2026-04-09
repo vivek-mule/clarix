@@ -11,6 +11,8 @@ functions keeps the interface clean and easy to swap for async later.
 
 from __future__ import annotations
 
+from typing import Optional
+
 from auth.supabase_client import supabase_admin
 
 TABLE = "student_profiles"
@@ -18,7 +20,7 @@ TABLE = "student_profiles"
 
 # ── Read ────────────────────────────────────────────────────
 
-def get_profile(student_id: str) -> dict | None:
+def get_profile(student_id: str) -> Optional[dict]:
     """
     Fetch a single student profile by its UUID.
     Returns the row as a dict, or None if not found.
@@ -34,7 +36,7 @@ def get_profile(student_id: str) -> dict | None:
     return res.data
 
 
-def get_progress(student_id: str) -> dict | None:
+def get_progress(student_id: str) -> Optional[dict]:
     """
     Return only the progress-related fields for a student.
     """
@@ -74,7 +76,7 @@ def create_profile(student_id: str, name: str, subject: str) -> dict:
 
 # ── Update ──────────────────────────────────────────────────
 
-def update_profile(student_id: str, updates: dict) -> dict | None:
+def update_profile(student_id: str, updates: dict) -> Optional[dict]:
     """
     Partial update — pass only the fields you want to change.
     Returns the updated row.
@@ -100,7 +102,7 @@ def mark_onboarding_complete(
     learning_style: str,
     knowledge_levels: dict,
     learning_path: list,
-) -> dict | None:
+) -> Optional[dict]:
     """
     Convenience wrapper called after the onboarding flow finishes.
     Sets the style, initial knowledge map, generated learning path,
@@ -114,7 +116,7 @@ def mark_onboarding_complete(
     })
 
 
-def advance_module(student_id: str, completed_topic: str) -> dict | None:
+def advance_module(student_id: str, completed_topic: str) -> Optional[dict]:
     """
     Mark a module as completed and bump current_module_index.
     Appends the topic to completed_modules and increments the index.

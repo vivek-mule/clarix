@@ -19,20 +19,23 @@ langgraph==0.3.30
 sentence-transformers==4.1.0          # all-MiniLM-L6-v2 — 384-dim
 
 # ── Pinecone (Vector DB) ───────────────────────────────────
-pinecone-client==6.0.1
+pinecone
 
 # ── Supabase (Auth + PostgreSQL) ───────────────────────────
 supabase==2.15.1
-postgrest-py==0.19.0
 
 # ── HTTP / Async ────────────────────────────────────────────
 httpx==0.28.1
 aiofiles==24.1.0
+sse-starlette==2.1.3
 
 # ── Content Ingestion ───────────────────────────────────────
 python-pptx==1.0.2                    # .pptx slide extraction
+pypdf==4.2.0                          # .pdf text extraction for slide decks
 
 # ── Utilities ───────────────────────────────────────────────
 python-multipart==0.0.20              # file uploads in FastAPI
 python-jose[cryptography]==3.4.0      # JWT token handling
 passlib[bcrypt]==1.7.4                # password hashing
+greenlet==3.0.3                       # avoid source build on py3.9 (Windows)
+email-validator==2.2.0                # required for pydantic EmailStr

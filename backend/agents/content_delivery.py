@@ -98,16 +98,14 @@ def content_delivery_agent(state: AgentState) -> AgentState:
     ]
 
     # ── Step 4 & 5: Stream response tokens ──────────────────
-    stream_output: list[str] = []
-
+    # Important: mutate state["stream_output"] as tokens arrive so the SSE
+    # endpoint can stream in real-time while the graph is running.
+    state["stream_output"] = []
     for chunk in llm.stream(messages):
         token = chunk.content
         if token:
-            stream_output.append(token)
+            state["stream_output"].append(token)
 
-    return {
-        **state,
-        "current_agent": "content_delivery",
-        "retrieved_chunks": chunks,
-        "stream_output": stream_output,
-    }
+    state["current_agent"] = "content_delivery"
+    state["retrieved_chunks"] = chunks
+    return state

@@ -2,27 +2,27 @@
 backend/api/agent_routes.py — Exposes the LangGraph agent loop via FastAPI.
 
 Endpoints:
-    POST /agent/start-session   → initialise & run the graph, return session_id
-    GET  /agent/stream/{sid}    → SSE stream of tokens from stream_output
+    POST /agent/start-session   → verify JWT, create session, start graph, return session_id
+    GET  /agent/stream          → SSE stream of tokens as they are generated
     POST /agent/submit-answer   → inject answer into session, resume graph
 """
 
 from __future__ import annotations
 
 import asyncio
-import json
 import uuid
-from collections import defaultdict
-from typing import AsyncGenerator
+from dataclasses import dataclass
+from typing import AsyncGenerator, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.responses import StreamingResponse
+from sse_starlette.sse import EventSourceResponse
 from pydantic import BaseModel
 
 from auth.jwt_dependency import get_current_user_id
 from agents.graph import run_session
 from agents.state import AgentState
 from db.quiz_attempts import save_quiz_attempt
+from db.student_profile import get_profile
 
 router = APIRouter(prefix="/agent", tags=["Agent"])
 
@@ -30,11 +30,17 @@ router = APIRouter(prefix="/agent", tags=["Agent"])
 # ────────────────────────────────────────────────────────────
 #  In-memory session store
 # ────────────────────────────────────────────────────────────
-# Maps session_id → AgentState.
+@dataclass
+class _Session:
+    student_id: str
+    state: AgentState
+    task: Optional[asyncio.Task] = None
+    error: Optional[str] = None
+
+
+# Maps session_id → _Session.
 # In production replace with Redis or a DB-backed store.
-_sessions: dict[str, AgentState] = {}
-# Maps session_id → student_id (for ownership verification)
-_session_owners: dict[str, str] = {}
+_sessions: dict[str, _Session] = {}
 
 
 # ────────────────────────────────────────────────────────────
@@ -127,19 +133,37 @@ def _maybe_save_quiz(state: AgentState) -> None:
             print(f"⚠  Quiz attempt save failed: {e}")
 
 
-def _verify_session_ownership(session_id: str, student_id: str) -> AgentState:
+def _verify_session_ownership(session_id: str, student_id: str) -> _Session:
     """Check that the session exists and belongs to this student."""
     if session_id not in _sessions:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Session {session_id} not found",
         )
-    if _session_owners.get(session_id) != student_id:
+    sess = _sessions[session_id]
+    if sess.student_id != student_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You do not own this session",
         )
-    return _sessions[session_id]
+    return sess
+
+
+async def _run_graph_in_background(session_id: str, student_id: str, message: str) -> None:
+    """Run LangGraph and update the in-memory session state."""
+    sess = _sessions.get(session_id)
+    if not sess:
+        return
+    try:
+        result_state = await run_session(
+            student_id=student_id,
+            message=message,
+            existing_state=sess.state,
+        )
+        sess.state = result_state
+        _maybe_save_quiz(result_state)
+    except Exception as e:
+        sess.error = str(e)
 
 
 # ────────────────────────────────────────────────────────────
@@ -161,27 +185,38 @@ async def start_session(
     """
     session_id = str(uuid.uuid4())
 
-    # Run the graph
-    result_state = await run_session(
+    # Initialise state now so the SSE endpoint can attach immediately.
+    profile = get_profile(student_id) or {}
+    initial_state: AgentState = AgentState(
         student_id=student_id,
-        message=body.message,
+        student_profile=profile,
+        current_agent="",
+        messages=[],
+        diagnostic_results={},
+        learning_path=profile.get("learning_path", []),
+        current_module={},
+        retrieved_chunks=[],
+        quiz_results={},
+        mastery_score=-1.0,
+        next_action="",
+        stream_output=[],
     )
 
-    # Persist quiz attempt if feedback agent just finished
-    _maybe_save_quiz(result_state)
+    sess = _Session(student_id=student_id, state=initial_state)
+    _sessions[session_id] = sess
 
-    # Store session
-    _sessions[session_id] = result_state
-    _session_owners[session_id] = student_id
+    # Start the LangGraph run in the background. While it runs, agents will
+    # append tokens into sess.state["stream_output"] in real-time.
+    sess.task = asyncio.create_task(_run_graph_in_background(session_id, student_id, body.message))
 
-    return _state_to_start_response(session_id, result_state)
+    return _state_to_start_response(session_id, initial_state)
 
 
 # ────────────────────────────────────────────────────────────
-#  GET /agent/stream/{session_id}
+#  GET /agent/stream
 # ────────────────────────────────────────────────────────────
 
-@router.get("/stream/{session_id}")
+@router.get("/stream")
 async def stream_tokens(
     session_id: str,
     student_id: str = Depends(get_current_user_id),
@@ -189,28 +224,35 @@ async def stream_tokens(
     """
     Server-Sent Events (SSE) endpoint.
     Streams tokens from state.stream_output to the frontend in real-time.
-    Each token is sent as:  data: {"token": "..."}
-    When complete:          data: [DONE]
+    Each token is sent as:  data: <token>
+    When complete:          event: done  data: [DONE]
     """
-    state = _verify_session_ownership(session_id, student_id)
-
-    tokens = state.get("stream_output", [])
+    sess = _verify_session_ownership(session_id, student_id)
 
     async def event_generator() -> AsyncGenerator[str, None]:
-        for token in tokens:
-            # SSE format: each event is "data: <payload>\n\n"
-            payload = json.dumps({"token": token})
-            yield f"data: {payload}\n\n"
-            # Small delay to emulate real-time streaming and prevent
-            # overwhelming slow clients
-            await asyncio.sleep(0.01)
+        cursor = 0
+        while True:
+            if sess.error:
+                yield f"event: error\ndata: {sess.error}\n\n"
+                yield "event: done\ndata: [DONE]\n\n"
+                return
 
-        # Signal completion
-        yield "data: [DONE]\n\n"
+            tokens = sess.state.get("stream_output", [])
+            while cursor < len(tokens):
+                token = tokens[cursor]
+                cursor += 1
+                if token:
+                    yield f"data: {token}\n\n"
 
-    return StreamingResponse(
+            # If the background task finished and we've drained tokens, we're done.
+            if sess.task and sess.task.done():
+                yield "event: done\ndata: [DONE]\n\n"
+                return
+
+            await asyncio.sleep(0.05)
+
+    return EventSourceResponse(
         event_generator(),
-        media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
@@ -234,19 +276,12 @@ async def submit_answer(
 
     The student_id comes from the verified JWT — never from the body.
     """
-    existing_state = _verify_session_ownership(body.session_id, student_id)
+    sess = _verify_session_ownership(body.session_id, student_id)
 
-    # Resume the graph with the new answer
-    result_state = await run_session(
-        student_id=student_id,
-        message=body.answer,
-        existing_state=existing_state,
-    )
+    sess.state["stream_output"] = []
+    sess.error = None
 
-    # Persist quiz attempt if feedback agent just finished
-    _maybe_save_quiz(result_state)
+    # Resume the graph in the background.
+    sess.task = asyncio.create_task(_run_graph_in_background(body.session_id, student_id, body.answer))
 
-    # Update stored session
-    _sessions[body.session_id] = result_state
-
-    return _state_to_submit_response(body.session_id, result_state)
+    return _state_to_submit_response(body.session_id, sess.state)
