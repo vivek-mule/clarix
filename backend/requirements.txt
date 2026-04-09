@@ -1,0 +1,38 @@
+# ── Core Framework ──────────────────────────────────────────
+fastapi==0.115.12
+uvicorn[standard]==0.34.2
+python-dotenv==1.1.0
+pydantic==2.11.1
+pydantic-settings==2.9.1
+
+# ── Google Vertex AI (Gemini LLM) ──────────────────────────
+google-cloud-aiplatform==1.86.0
+
+# ── LangChain + LangGraph (Agent Orchestration) ────────────
+langchain==0.3.23
+langchain-core==0.3.51
+langchain-google-vertexai==2.0.17
+langchain-community==0.3.21
+langgraph==0.3.30
+
+# ── Embeddings (Local, no API needed) ──────────────────────
+sentence-transformers==4.1.0          # all-MiniLM-L6-v2 — 384-dim
+
+# ── Pinecone (Vector DB) ───────────────────────────────────
+pinecone-client==6.0.1
+
+# ── Supabase (Auth + PostgreSQL) ───────────────────────────
+supabase==2.15.1
+postgrest-py==0.19.0
+
+# ── HTTP / Async ────────────────────────────────────────────
+httpx==0.28.1
+aiofiles==24.1.0
+
+# ── Content Ingestion ───────────────────────────────────────
+python-pptx==1.0.2                    # .pptx slide extraction
+
+# ── Utilities ───────────────────────────────────────────────
+python-multipart==0.0.20              # file uploads in FastAPI
+python-jose[cryptography]==3.4.0      # JWT token handling
+passlib[bcrypt]==1.7.4                # password hashing
