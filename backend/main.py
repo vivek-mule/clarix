@@ -13,7 +13,15 @@ Run:
 
 from __future__ import annotations
 
+import os
 from contextlib import asynccontextmanager
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+# Load .env BEFORE any GCP SDK imports so GOOGLE_APPLICATION_CREDENTIALS is set
+_env_path = Path(__file__).resolve().parent / ".env"
+load_dotenv(_env_path, override=False)
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware

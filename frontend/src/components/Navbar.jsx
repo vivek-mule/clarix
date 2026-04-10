@@ -1,72 +1,62 @@
-import { Link, NavLink } from "react-router-dom";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth.jsx";
+import { FiLogOut } from "react-icons/fi";
 
 export default function Navbar() {
   const { isAuthenticated, logout, profile } = useAuth();
+  const nav = useNavigate();
 
   const navClass = ({ isActive }) => `nav-link ${isActive ? "nav-link-active" : ""}`;
 
+  const handleLogout = () => {
+    logout();
+    nav("/");
+  };
+
   return (
-    <header id="main-nav" className="sticky top-0 z-50 pb-1">
-      <nav className="nav-shell px-4 py-3 sm:px-5">
-        <div className="flex flex-wrap items-center gap-3">
-          <Link to="/" className="inline-flex items-center gap-2.5 group">
+    <header id="main-nav" className="sticky top-0 z-50">
+      <nav className="nav-shell px-4 py-2.5 sm:px-5">
+        <div className="flex items-center gap-3">
+          {/* Logo */}
+          <Link to={isAuthenticated ? "/dashboard" : "/"} className="inline-flex items-center gap-2 group">
             <span
               style={{
                 display: "grid",
-                height: "2.2rem",
-                width: "2.2rem",
+                height: "1.85rem",
+                width: "1.85rem",
                 placeItems: "center",
-                borderRadius: "0.7rem",
-                background: "linear-gradient(135deg, var(--color-primary), #0090cc)",
+                borderRadius: "0.5rem",
+                background: "var(--color-primary)",
                 fontWeight: 800,
-                fontSize: "0.9rem",
+                fontSize: "0.8rem",
                 color: "#fff",
-                boxShadow: "0 4px 14px rgba(0, 212, 255, 0.25)",
-                transition: "transform 200ms ease, box-shadow 200ms ease",
               }}
             >
-              P
+              C
             </span>
-            <div>
-              <div
-                style={{
-                  fontWeight: 650,
-                  fontSize: "0.92rem",
-                  lineHeight: 1.2,
-                  color: "var(--color-text)",
-                  letterSpacing: "-0.01em",
-                }}
-              >
-                Pragyantra LearnOS
-              </div>
-              <div
-                style={{
-                  fontSize: "0.7rem",
-                  color: "var(--color-text-dim)",
-                  letterSpacing: "0.02em",
-                }}
-              >
-                Adaptive learning cockpit
-              </div>
-            </div>
+            <span
+              style={{
+                fontWeight: 700,
+                fontSize: "0.95rem",
+                color: "var(--color-text)",
+                letterSpacing: "-0.01em",
+                fontFamily: "var(--font-display)",
+              }}
+            >
+              Clarix
+            </span>
           </Link>
 
-          <div className="order-3 flex w-full flex-wrap gap-1 pt-1 sm:order-none sm:w-auto sm:flex-1 sm:justify-center sm:pt-0">
-            <NavLink to="/" className={navClass} end>
-              Home
-            </NavLink>
-            <NavLink to="/dashboard" className={navClass}>
-              Dashboard
-            </NavLink>
-            <NavLink to="/session" className={navClass}>
-              Session
-            </NavLink>
-            <NavLink to="/onboarding" className={navClass}>
-              Setup
-            </NavLink>
-          </div>
+          {/* Center nav links */}
+          {isAuthenticated && (
+            <div className="hidden sm:flex flex-1 justify-center gap-1">
+              <NavLink to="/dashboard" className={navClass}>Dashboard</NavLink>
+              <NavLink to="/session" className={navClass}>Session</NavLink>
+              <NavLink to="/onboarding" className={navClass}>Setup</NavLink>
+            </div>
+          )}
 
+          {/* Right side */}
           <div className="ml-auto flex items-center gap-2">
             {isAuthenticated ? (
               <>
@@ -74,17 +64,32 @@ export default function Navbar() {
                   <span className="status-dot" aria-hidden />
                   <span>{profile?.name || "Student"}</span>
                 </div>
-                <button onClick={logout} className="btn-secondary text-sm" type="button">
-                  Log out
+                <button
+                  onClick={handleLogout}
+                  className="btn-ghost text-sm"
+                  type="button"
+                  style={{ padding: "0.4rem 0.7rem", fontSize: "0.8rem" }}
+                >
+                  <FiLogOut size={14} />
+                  <span className="hidden sm:inline">Log out</span>
                 </button>
               </>
             ) : (
-              <Link to="/auth" className="btn-primary text-sm">
+              <Link to="/" className="btn-primary text-sm" style={{ fontSize: "0.8rem" }}>
                 Sign in
               </Link>
             )}
           </div>
         </div>
+
+        {/* Mobile nav */}
+        {isAuthenticated && (
+          <div className="flex sm:hidden gap-1 mt-2 pb-0.5">
+            <NavLink to="/dashboard" className={navClass}>Dashboard</NavLink>
+            <NavLink to="/session" className={navClass}>Session</NavLink>
+            <NavLink to="/onboarding" className={navClass}>Setup</NavLink>
+          </div>
+        )}
       </nav>
     </header>
   );

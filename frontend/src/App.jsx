@@ -1,8 +1,8 @@
 import { Navigate, Outlet, Route, Routes } from "react-router-dom";
+import { Toaster } from "react-hot-toast";
 
 import Layout from "./components/Layout.jsx";
 import Landing from "./pages/Landing.jsx";
-import Auth from "./pages/Auth.jsx";
 import Onboarding from "./pages/Onboarding.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import LearningSession from "./pages/LearningSession.jsx";
@@ -10,9 +10,19 @@ import { useAuth } from "./hooks/useAuth.jsx";
 
 function AuthLoadingScreen() {
   return (
-    <section className="py-10">
-      <div className="surface-card-soft px-4 py-3 text-sm text-[var(--color-text-muted)]">Checking session...</div>
-    </section>
+    <div
+      style={{
+        minHeight: "100vh",
+        display: "grid",
+        placeItems: "center",
+        background: "var(--color-bg)",
+      }}
+    >
+      <div style={{ textAlign: "center" }}>
+        <div className="spinner" style={{ width: "1.5rem", height: "1.5rem", marginBottom: "0.75rem" }} />
+        <div style={{ fontSize: "0.85rem", color: "var(--color-text-muted)" }}>Loading...</div>
+      </div>
+    </div>
   );
 }
 
@@ -20,39 +30,40 @@ function RequireAuth() {
   const { isAuthenticated, initializing } = useAuth();
 
   if (initializing) return <AuthLoadingScreen />;
-  if (!isAuthenticated) return <Navigate to="/auth" replace />;
-  return <Outlet />;
-}
-
-function PublicOnlyAuth() {
-  const { isAuthenticated, initializing, profile } = useAuth();
-
-  if (initializing) return <AuthLoadingScreen />;
-  if (isAuthenticated) {
-    const next = profile?.onboarding_complete ? "/dashboard" : "/onboarding";
-    return <Navigate to={next} replace />;
-  }
+  if (!isAuthenticated) return <Navigate to="/" replace />;
   return <Outlet />;
 }
 
 export default function App() {
   return (
-    <Routes>
-      <Route element={<PublicOnlyAuth />}>
-        <Route path="/auth" element={<Auth />} />
-      </Route>
-
-      <Route element={<Layout />}>
+    <>
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          style: {
+            background: "rgba(22, 22, 28, 0.95)",
+            color: "var(--color-text)",
+            border: "1px solid var(--color-border-strong)",
+            borderRadius: "var(--radius-md)",
+            fontSize: "0.85rem",
+          },
+        }}
+      />
+      <Routes>
+        {/* Public: Landing page with integrated auth */}
         <Route path="/" element={<Landing />} />
 
-        <Route element={<RequireAuth />}>
-          <Route path="/onboarding" element={<Onboarding />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/session" element={<LearningSession />} />
+        {/* Protected routes within layout */}
+        <Route element={<Layout />}>
+          <Route element={<RequireAuth />}>
+            <Route path="/onboarding" element={<Onboarding />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/session" element={<LearningSession />} />
+          </Route>
         </Route>
-      </Route>
 
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </>
   );
 }

@@ -1,97 +1,141 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  FiArrowRight,
+  FiArrowLeft,
+  FiCheck,
+  FiTarget,
+  FiBookOpen,
+  FiTrendingUp,
+  FiZap,
+} from "react-icons/fi";
 import { saveOnboarding } from "../lib/api.js";
 import { useAuth } from "../hooks/useAuth.jsx";
 
-const STEPS = ["Focus", "Learning style", "Experience level"];
+const STEPS = [
+  { label: "Focus Area", icon: FiTarget, desc: "What you want to learn" },
+  { label: "Learning Style", icon: FiBookOpen, desc: "How you learn best" },
+  { label: "Experience", icon: FiTrendingUp, desc: "Your current level" },
+];
 
 const STYLES = [
-  { id: "visual", label: "Visual", desc: "Diagrams, spatial metaphors, structured visuals.", icon: "👁️" },
-  { id: "auditory", label: "Auditory", desc: "Conversational explanations, mnemonics, rhythm.", icon: "🎧" },
-  { id: "reading", label: "Reading/Writing", desc: "Definitions, bullet points, clear structure.", icon: "📖" },
-  { id: "kinesthetic", label: "Kinesthetic", desc: "Real-world examples, experiments, interactive thinking.", icon: "🔧" },
+  { id: "visual", label: "Visual Learner", desc: "Diagrams, spatial metaphors, structured visuals and graphics.", icon: "👁️", accent: "#6366f1" },
+  { id: "auditory", label: "Auditory Learner", desc: "Conversational explanations, mnemonics, rhythm and flow.", icon: "🎧", accent: "#a855f7" },
+  { id: "reading", label: "Reading/Writing", desc: "Definitions, bullet points, well-organized written content.", icon: "📖", accent: "#06b6d4" },
+  { id: "kinesthetic", label: "Kinesthetic Learner", desc: "Hands-on examples, experiments, interactive exercises.", icon: "🔧", accent: "#10b981" },
 ];
 
 const LEVELS = [
-  { id: "beginner", label: "Beginner", desc: "I'm new to most of these topics.", icon: "🌱" },
-  { id: "intermediate", label: "Intermediate", desc: "I know fundamentals and want to build depth.", icon: "📈" },
-  { id: "advanced", label: "Advanced", desc: "I'm comfortable and want harder problems + nuance.", icon: "🚀" },
+  { id: "beginner", label: "Beginner", desc: "New to most topics. I need to start from the fundamentals.", icon: "🌱", accent: "#10b981" },
+  { id: "intermediate", label: "Intermediate", desc: "I know the basics and want to build deeper understanding.", icon: "📈", accent: "#6366f1" },
+  { id: "advanced", label: "Advanced", desc: "I'm comfortable with concepts, looking for nuance and challenge.", icon: "🚀", accent: "#a855f7" },
 ];
 
-function CardOption({ selected, title, desc, onClick, icon }) {
+const FOCUSES = [
+  { id: "core", label: "Core Concepts", desc: "Fundamentals, definitions, and first principles.", icon: "🎯", accent: "#6366f1" },
+  { id: "problem_solving", label: "Problem Solving", desc: "Application-oriented, stepwise solution building.", icon: "🧩", accent: "#a855f7" },
+  { id: "applications", label: "Real-World Applications", desc: "Practical examples, case studies, and intuition.", icon: "⚡", accent: "#f59e0b" },
+  { id: "exam_prep", label: "Exam Preparation", desc: "Speed, pattern recognition, and targeted practice.", icon: "📝", accent: "#06b6d4" },
+];
+
+/* ── Card Option ── */
+function CardOption({ selected, title, desc, onClick, icon, accent }) {
   return (
-    <button
+    <motion.button
       type="button"
       onClick={onClick}
+      whileTap={{ scale: 0.98 }}
       style={{
         width: "100%",
-        borderRadius: "var(--radius-xl)",
-        border: selected
-          ? "1.5px solid rgba(0, 212, 255, 0.4)"
-          : "1px solid var(--color-border)",
-        padding: "1.15rem 1.25rem",
+        borderRadius: "var(--radius-lg)",
+        border: selected ? `1.5px solid ${accent}50` : "1px solid var(--color-border)",
+        padding: "1rem 1.1rem",
         textAlign: "left",
         cursor: "pointer",
         fontFamily: "var(--font-body)",
-        transition: "all 250ms cubic-bezier(0.4, 0, 0.2, 1)",
-        background: selected
-          ? "linear-gradient(135deg, rgba(0, 212, 255, 0.1), rgba(0, 212, 255, 0.03))"
-          : "var(--color-surface-soft)",
-        boxShadow: selected
-          ? "0 0 20px rgba(0, 212, 255, 0.08), inset 0 1px 0 rgba(255,255,255,0.03)"
-          : "none",
-        transform: selected ? "scale(1.01)" : "scale(1)",
+        transition: "all 220ms ease",
+        background: selected ? `${accent}08` : "rgba(14, 14, 18, 0.6)",
+        boxShadow: selected ? `0 0 20px ${accent}08` : "none",
         display: "flex",
-        gap: "0.85rem",
-        alignItems: "flex-start",
+        gap: "0.8rem",
+        alignItems: "center",
+        position: "relative",
+        overflow: "hidden",
       }}
       onMouseEnter={(e) => {
         if (!selected) {
-          e.currentTarget.style.borderColor = "rgba(99, 115, 160, 0.35)";
-          e.currentTarget.style.background = "rgba(20, 28, 55, 0.8)";
+          e.currentTarget.style.borderColor = "var(--color-border-strong)";
+          e.currentTarget.style.background = "rgba(22,22,28,0.5)";
         }
       }}
       onMouseLeave={(e) => {
         if (!selected) {
           e.currentTarget.style.borderColor = "var(--color-border)";
-          e.currentTarget.style.background = "var(--color-surface-soft)";
+          e.currentTarget.style.background = "rgba(14, 14, 18, 0.6)";
         }
       }}
     >
-      {icon && (
-        <span style={{ fontSize: "1.3rem", lineHeight: 1, marginTop: "0.1rem" }}>{icon}</span>
+      {/* Accent glow when selected */}
+      {selected && (
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            right: 0,
+            width: "8rem",
+            height: "8rem",
+            borderRadius: "50%",
+            background: `radial-gradient(circle, ${accent}06, transparent 65%)`,
+            transform: "translate(40%, -40%)",
+            pointerEvents: "none",
+          }}
+        />
       )}
-      <div>
-        <div style={{ fontWeight: 600, fontSize: "0.95rem", color: "var(--color-text)" }}>
-          {title}
-        </div>
-        <div style={{ marginTop: "0.25rem", fontSize: "0.83rem", color: "var(--color-text-muted)", lineHeight: 1.5 }}>
+      <div
+        style={{
+          fontSize: "1.35rem",
+          lineHeight: 1,
+          width: "2.4rem",
+          height: "2.4rem",
+          borderRadius: "0.55rem",
+          display: "grid",
+          placeItems: "center",
+          background: selected ? `${accent}15` : "rgba(255,255,255,0.03)",
+          border: `1px solid ${selected ? `${accent}25` : "var(--color-border)"}`,
+          flexShrink: 0,
+          transition: "all 200ms ease",
+        }}
+      >
+        {icon}
+      </div>
+      <div style={{ flex: 1, position: "relative" }}>
+        <div style={{ fontWeight: 600, fontSize: "0.9rem", color: "var(--color-text)" }}>{title}</div>
+        <div style={{ marginTop: "0.15rem", fontSize: "0.76rem", color: "var(--color-text-muted)", lineHeight: 1.4 }}>
           {desc}
         </div>
       </div>
       {selected && (
-        <span
+        <div
           style={{
-            marginLeft: "auto",
+            width: "1.3rem",
+            height: "1.3rem",
+            borderRadius: "50%",
+            background: accent,
             display: "grid",
             placeItems: "center",
-            width: "1.4rem",
-            height: "1.4rem",
-            borderRadius: "50%",
-            background: "linear-gradient(135deg, var(--color-primary), #0090cc)",
-            fontSize: "0.7rem",
-            color: "#fff",
             flexShrink: 0,
-            marginTop: "0.15rem",
+            boxShadow: `0 2px 8px ${accent}30`,
           }}
         >
-          ✓
-        </span>
+          <FiCheck size={10} color="#fff" />
+        </div>
       )}
-    </button>
+    </motion.button>
   );
 }
 
+/* ════════════════════ ONBOARDING ════════════════════ */
 export default function Onboarding() {
   const nav = useNavigate();
   const { refreshProfile } = useAuth();
@@ -112,13 +156,8 @@ export default function Onboarding() {
     setSaving(true);
     setError(null);
     try {
-      // Backend expects knowledge_levels dict; we seed a coarse baseline.
       const knowledge_levels = { [focusHint]: { level: experienceLevel } };
-      await saveOnboarding({
-        learning_style: learningStyle,
-        knowledge_levels,
-        learning_path: [],
-      });
+      await saveOnboarding({ learning_style: learningStyle, knowledge_levels, learning_path: [] });
       await refreshProfile();
       nav("/dashboard");
     } catch (e) {
@@ -129,238 +168,248 @@ export default function Onboarding() {
   };
 
   return (
-    <section className="py-8 md:py-10 fade-in">
-      <div className="surface-card p-6 sm:p-8">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <span className="section-kicker">Profile setup</span>
-            <h1
-              style={{
-                marginTop: "0.5rem",
-                fontSize: "1.75rem",
-                fontWeight: 700,
-                letterSpacing: "-0.02em",
-                color: "var(--color-text)",
-                fontFamily: "var(--font-display)",
-              }}
-            >
-              Configure your adaptive learning profile
-            </h1>
-            <p style={{ marginTop: "0.5rem", fontSize: "0.88rem", color: "var(--color-text-muted)" }}>
-              These choices set your initial learning behavior. The agents will keep refining this as you progress.
-            </p>
-          </div>
-          <div className="badge">
-            Step {step} / {STEPS.length}
-          </div>
-        </div>
+    <section style={{ paddingTop: "1.5rem", paddingBottom: "2rem", maxWidth: "620px", margin: "0 auto" }}>
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+        style={{
+          borderRadius: "var(--radius-xl)",
+          border: "1px solid var(--color-border)",
+          background: "rgba(14,14,18,0.85)",
+          overflow: "hidden",
+          boxShadow: "0 16px 48px rgba(0,0,0,0.3)",
+        }}
+      >
+        {/* Accent line */}
+        <div style={{ height: "2px", background: "linear-gradient(90deg, transparent, var(--color-primary), var(--color-secondary), transparent)" }} />
 
-        {/* Step indicators */}
-        <div className="mt-6 grid gap-2 sm:grid-cols-3">
-          {STEPS.map((name, idx) => {
-            const isActive = idx + 1 === step;
-            const isDone = idx + 1 < step;
-            return (
-              <div
-                key={name}
-                style={{
-                  borderRadius: "var(--radius-xl)",
-                  border: isActive
-                    ? "1.5px solid rgba(0, 212, 255, 0.4)"
-                    : isDone
-                    ? "1px solid rgba(0, 232, 157, 0.3)"
-                    : "1px solid var(--color-border)",
-                  padding: "0.8rem 1rem",
-                  fontSize: "0.85rem",
-                  fontWeight: 600,
-                  color: isActive
-                    ? "var(--color-primary)"
-                    : isDone
-                    ? "var(--color-accent)"
-                    : "var(--color-text-muted)",
-                  background: isActive
-                    ? "var(--color-primary-glow)"
-                    : isDone
-                    ? "var(--color-accent-glow)"
-                    : "var(--color-surface-soft)",
-                  transition: "all 300ms ease",
-                }}
-              >
-                {isDone ? "✓ " : ""}{idx + 1}. {name}
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Progress bar */}
+        {/* Header */}
         <div
-          className="mt-5"
           style={{
-            height: "0.35rem",
-            width: "100%",
-            overflow: "hidden",
-            borderRadius: "999px",
-            background: "rgba(20, 28, 55, 0.6)",
+            padding: "1.75rem 1.75rem 1.35rem",
+            borderBottom: "1px solid var(--color-border)",
+            background: "linear-gradient(180deg, rgba(99,102,241,0.04) 0%, transparent 100%)",
           }}
         >
-          <div
+          <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.5rem" }}>
+            <div style={{ width: "1.4rem", height: "1.4rem", borderRadius: "0.35rem", display: "grid", placeItems: "center", background: "var(--color-primary-glow)", color: "var(--color-primary-light)" }}>
+              <FiZap size={10} />
+            </div>
+            <span className="section-kicker">Setup</span>
+          </div>
+          <h1
             style={{
-              height: "100%",
-              background: "linear-gradient(90deg, var(--color-primary), var(--color-secondary))",
-              borderRadius: "999px",
-              width: `${progressPct}%`,
-              transition: "width 400ms cubic-bezier(0.4, 0, 0.2, 1)",
-              boxShadow: "0 0 12px rgba(0, 212, 255, 0.3)",
+              fontSize: "1.4rem",
+              fontWeight: 800,
+              letterSpacing: "-0.02em",
+              color: "var(--color-text)",
+              fontFamily: "var(--font-display)",
             }}
-          />
-        </div>
+          >
+            Configure your <span className="gradient-text">learning profile</span>
+          </h1>
+          <p style={{ marginTop: "0.3rem", fontSize: "0.82rem", color: "var(--color-text-muted)" }}>
+            These preferences set your initial experience. The AI will continuously adapt as you learn.
+          </p>
 
-        {/* Step content */}
-        <div
-          className="mt-6 surface-card-soft"
-          style={{ padding: "1.5rem 1.6rem" }}
-        >
-          {step === 1 && (
-            <>
-              <h2 style={{ fontSize: "1.2rem", fontWeight: 600, color: "var(--color-text)" }}>
-                Choose your current focus
-              </h2>
-              <p style={{ marginTop: "0.5rem", color: "var(--color-text-muted)", fontSize: "0.88rem" }}>
-                This seeds your initial baseline so the first diagnostic is more relevant.
-              </p>
-              <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                <CardOption
-                  selected={focusHint === "core"}
-                  title="Core concepts"
-                  desc="Fundamentals, principles, and definitions."
-                  icon="🎯"
-                  onClick={() => setFocusHint("core")}
-                />
-                <CardOption
-                  selected={focusHint === "problem_solving"}
-                  title="Problem solving"
-                  desc="Application-oriented, stepwise solution building."
-                  icon="🧩"
-                  onClick={() => setFocusHint("problem_solving")}
-                />
-                <CardOption
-                  selected={focusHint === "applications"}
-                  title="Applications"
-                  desc="Real-world context, examples, and intuition."
-                  icon="⚡"
-                  onClick={() => setFocusHint("applications")}
-                />
-                <CardOption
-                  selected={focusHint === "exam_prep"}
-                  title="Exam prep"
-                  desc="Speed, patterns, and accuracy for assessments."
-                  icon="📝"
-                  onClick={() => setFocusHint("exam_prep")}
-                />
-              </div>
-            </>
-          )}
-
-          {step === 2 && (
-            <>
-              <h2 style={{ fontSize: "1.2rem", fontWeight: 600, color: "var(--color-text)" }}>
-                How do you absorb information best?
-              </h2>
-              <p style={{ marginTop: "0.5rem", color: "var(--color-text-muted)", fontSize: "0.88rem" }}>
-                The tutor will adapt tone, framing, and explanation style to this preference.
-              </p>
-              <div className="mt-5 grid gap-3">
-                {STYLES.map((s) => (
-                  <CardOption
-                    key={s.id}
-                    selected={learningStyle === s.id}
-                    title={s.label}
-                    desc={s.desc}
-                    icon={s.icon}
-                    onClick={() => setLearningStyle(s.id)}
-                  />
-                ))}
-              </div>
-            </>
-          )}
-
-          {step === 3 && (
-            <>
-              <h2 style={{ fontSize: "1.2rem", fontWeight: 600, color: "var(--color-text)" }}>
-                Set your starting level
-              </h2>
-              <p style={{ marginTop: "0.5rem", color: "var(--color-text-muted)", fontSize: "0.88rem" }}>
-                This defines your initial module difficulty before personalized diagnostics kick in.
-              </p>
-              <div className="mt-5 grid gap-3">
-                {LEVELS.map((l) => (
-                  <CardOption
-                    key={l.id}
-                    selected={experienceLevel === l.id}
-                    title={l.label}
-                    desc={l.desc}
-                    icon={l.icon}
-                    onClick={() => setExperienceLevel(l.id)}
-                  />
-                ))}
-              </div>
-
-              {error && (
+          {/* Step indicators */}
+          <div style={{ display: "flex", gap: "0.35rem", marginTop: "1.15rem" }}>
+            {STEPS.map((s, idx) => {
+              const isActive = idx + 1 === step;
+              const isDone = idx + 1 < step;
+              return (
                 <div
-                  className="mt-5"
+                  key={s.label}
                   style={{
-                    borderRadius: "var(--radius-xl)",
-                    border: "1px solid rgba(255, 77, 106, 0.25)",
-                    background: "var(--color-danger-soft)",
-                    padding: "0.85rem 1.15rem",
-                    fontSize: "0.88rem",
-                    color: "var(--color-danger)",
+                    flex: 1,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.35rem",
+                    padding: "0.55rem 0.65rem",
+                    borderRadius: "var(--radius-md)",
+                    border: `1px solid ${isActive ? "rgba(99,102,241,0.25)" : isDone ? "rgba(16,185,129,0.18)" : "var(--color-border)"}`,
+                    background: isActive ? "rgba(99,102,241,0.06)" : isDone ? "rgba(16,185,129,0.04)" : "transparent",
+                    fontSize: "0.72rem",
+                    fontWeight: 600,
+                    color: isActive ? "var(--color-primary-light)" : isDone ? "var(--color-accent)" : "var(--color-text-dim)",
+                    transition: "all 250ms ease",
+                    cursor: "default",
                   }}
                 >
-                  {error}
+                  <div
+                    style={{
+                      width: "1.15rem",
+                      height: "1.15rem",
+                      borderRadius: "50%",
+                      display: "grid",
+                      placeItems: "center",
+                      background: isDone ? "var(--color-accent)" : isActive ? "var(--color-primary)" : "rgba(255,255,255,0.05)",
+                      color: isDone || isActive ? "#fff" : "var(--color-text-dim)",
+                      fontSize: "0.6rem",
+                      fontWeight: 700,
+                      flexShrink: 0,
+                    }}
+                  >
+                    {isDone ? <FiCheck size={8} /> : idx + 1}
+                  </div>
+                  <span className="hidden sm:inline">{s.label}</span>
                 </div>
-              )}
-            </>
-          )}
+              );
+            })}
+          </div>
 
-          <div className="mt-8 flex items-center justify-between">
+          {/* Progress bar */}
+          <div style={{ marginTop: "0.85rem", height: "3px", borderRadius: "999px", background: "rgba(255,255,255,0.04)", overflow: "hidden" }}>
+            <motion.div
+              animate={{ width: `${progressPct}%` }}
+              transition={{ duration: 0.35, ease: "easeOut" }}
+              style={{ height: "100%", borderRadius: "999px", background: "linear-gradient(90deg, var(--color-primary), var(--color-secondary))" }}
+            />
+          </div>
+        </div>
+
+        {/* Step Content */}
+        <div style={{ padding: "1.5rem 1.75rem 1.75rem" }}>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={step}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+            >
+              {step === 1 && (
+                <>
+                  <h2 style={{ fontSize: "1.05rem", fontWeight: 700, color: "var(--color-text)", marginBottom: "0.2rem" }}>
+                    Choose your focus area
+                  </h2>
+                  <p style={{ fontSize: "0.78rem", color: "var(--color-text-muted)", marginBottom: "1rem" }}>
+                    This seeds your initial baseline so diagnostics are more relevant.
+                  </p>
+                  <div style={{ display: "grid", gap: "0.45rem", gridTemplateColumns: "1fr 1fr" }}>
+                    {FOCUSES.map((f) => (
+                      <CardOption
+                        key={f.id}
+                        selected={focusHint === f.id}
+                        title={f.label}
+                        desc={f.desc}
+                        icon={f.icon}
+                        accent={f.accent}
+                        onClick={() => setFocusHint(f.id)}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {step === 2 && (
+                <>
+                  <h2 style={{ fontSize: "1.05rem", fontWeight: 700, color: "var(--color-text)", marginBottom: "0.2rem" }}>
+                    How do you learn best?
+                  </h2>
+                  <p style={{ fontSize: "0.78rem", color: "var(--color-text-muted)", marginBottom: "1rem" }}>
+                    The tutor will adapt its explanation style to your preference.
+                  </p>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+                    {STYLES.map((s) => (
+                      <CardOption
+                        key={s.id}
+                        selected={learningStyle === s.id}
+                        title={s.label}
+                        desc={s.desc}
+                        icon={s.icon}
+                        accent={s.accent}
+                        onClick={() => setLearningStyle(s.id)}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {step === 3 && (
+                <>
+                  <h2 style={{ fontSize: "1.05rem", fontWeight: 700, color: "var(--color-text)", marginBottom: "0.2rem" }}>
+                    Your experience level
+                  </h2>
+                  <p style={{ fontSize: "0.78rem", color: "var(--color-text-muted)", marginBottom: "1rem" }}>
+                    Sets starting difficulty before the diagnostic assessment refines it.
+                  </p>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+                    {LEVELS.map((l) => (
+                      <CardOption
+                        key={l.id}
+                        selected={experienceLevel === l.id}
+                        title={l.label}
+                        desc={l.desc}
+                        icon={l.icon}
+                        accent={l.accent}
+                        onClick={() => setExperienceLevel(l.id)}
+                      />
+                    ))}
+                  </div>
+                  {error && (
+                    <div
+                      style={{
+                        marginTop: "0.85rem",
+                        borderRadius: "var(--radius-md)",
+                        border: "1px solid rgba(239,68,68,0.2)",
+                        background: "var(--color-danger-soft)",
+                        padding: "0.65rem 0.85rem",
+                        fontSize: "0.8rem",
+                        color: "var(--color-danger)",
+                      }}
+                    >
+                      {error}
+                    </div>
+                  )}
+                </>
+              )}
+            </motion.div>
+          </AnimatePresence>
+
+          {/* Navigation */}
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: "1.5rem" }}>
             <button
               type="button"
               onClick={onBack}
               disabled={step === 1 || saving}
-              className="btn-secondary text-sm"
+              className="btn-secondary"
               style={{
-                opacity: step === 1 || saving ? 0.5 : 1,
-                cursor: step === 1 || saving ? "not-allowed" : "pointer",
+                opacity: step === 1 ? 0.35 : 1,
+                cursor: step === 1 ? "not-allowed" : "pointer",
+                fontSize: "0.82rem",
               }}
             >
-              Back
+              <FiArrowLeft size={14} /> Back
             </button>
 
             {step < 3 ? (
-              <button
-                type="button"
-                onClick={onNext}
-                disabled={saving}
-                className="btn-primary text-sm"
-                style={{ opacity: saving ? 0.5 : 1 }}
-              >
-                Next →
+              <button type="button" onClick={onNext} className="btn-primary" style={{ fontSize: "0.82rem" }}>
+                Continue <FiArrowRight size={14} />
               </button>
             ) : (
               <button
                 type="button"
                 onClick={onFinish}
                 disabled={saving}
-                className="btn-primary text-sm"
-                style={{ opacity: saving ? 0.5 : 1 }}
+                className="btn-primary"
+                style={{ opacity: saving ? 0.6 : 1, fontSize: "0.82rem" }}
               >
-                {saving ? "Saving..." : "Finish onboarding ✓"}
+                {saving ? (
+                  <>
+                    <span className="spinner" /> Saving...
+                  </>
+                ) : (
+                  <>
+                    <FiCheck size={14} /> Complete Setup
+                  </>
+                )}
               </button>
             )}
           </div>
         </div>
-      </div>
+      </motion.div>
     </section>
   );
 }

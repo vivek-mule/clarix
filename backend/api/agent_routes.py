@@ -67,6 +67,7 @@ class StartSessionResponse(BaseModel):
     quiz_results: dict = {}
     mastery_score: float = -1.0
     has_stream: bool = False  # True if stream_output is populated
+    retrieved_chunks: list = []
 
 
 class SubmitAnswerRequest(BaseModel):
@@ -82,6 +83,7 @@ class SubmitAnswerResponse(BaseModel):
     quiz_results: dict = {}
     mastery_score: float = -1.0
     has_stream: bool = False
+    retrieved_chunks: list = []
 
 
 class SessionSummaryResponse(BaseModel):
@@ -113,6 +115,7 @@ class SessionDetailResponse(BaseModel):
     diagnostic_results: dict = {}
     quiz_results: dict = {}
     mastery_score: float = -1.0
+    retrieved_chunks: list = []
 
 
 # ────────────────────────────────────────────────────────────
@@ -129,6 +132,7 @@ def _state_to_start_response(session_id: str, state: AgentState) -> StartSession
         quiz_results=state.get("quiz_results", {}),
         mastery_score=state.get("mastery_score", -1.0),
         has_stream=bool(state.get("stream_output")),
+        retrieved_chunks=state.get("retrieved_chunks", []),
     )
 
 
@@ -141,6 +145,7 @@ def _state_to_submit_response(session_id: str, state: AgentState) -> SubmitAnswe
         quiz_results=state.get("quiz_results", {}),
         mastery_score=state.get("mastery_score", -1.0),
         has_stream=bool(state.get("stream_output")),
+        retrieved_chunks=state.get("retrieved_chunks", []),
     )
 
 
@@ -450,6 +455,7 @@ async def get_session_detail(
         diagnostic_results=state.get("diagnostic_results", {}),
         quiz_results=state.get("quiz_results", {}),
         mastery_score=state.get("mastery_score", -1.0),
+        retrieved_chunks=state.get("retrieved_chunks", []),
     )
 
 
