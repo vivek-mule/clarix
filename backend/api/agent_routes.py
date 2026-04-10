@@ -201,12 +201,21 @@ def _latest_user_text(state: AgentState) -> str:
 
 
 def _session_title(seed_message: str, state: AgentState) -> str:
+    # 1. Prefer the current formal learning topic
+    module = state.get("current_module", {})
+    topic = str(module.get("topic", "")).strip()
+    if topic and topic.lower() != "unknown":
+        return " ".join(topic.split())[:120]
+
+    # 2. Prefer the FIRST user message (the prompt), not the latest (which might be "Ready for quiz")
+    for msg in state.get("messages", []):
+        if isinstance(msg, dict) and msg.get("role") == "user":
+            content = str(msg.get("content", "")).strip()
+            if content and not content.startswith("[{"):
+                return " ".join(content.split())[:120]
+
+    # 3. Fallback
     base = " ".join((seed_message or "").split())
-    if not base:
-        base = " ".join((_latest_user_text(state) or "").split())
-    if not base:
-        module = state.get("current_module", {})
-        base = " ".join(str(module.get("topic", "")).split())
     return (base or "Untitled session")[:120]
 
 
@@ -491,8 +500,13 @@ async def stream_tokens(
                 if token:
                     yield {"event": "token", "data": token}
 
+            # If there's no task currently generating, end the stream immediately
+            if getattr(sess, "task", None) is None:
+                yield {"event": "done", "data": "[DONE]"}
+                return
+
             # If the background task finished and we've drained tokens, we're done.
-            if sess.task and sess.task.done():
+            if sess.task.done():
                 yield {"event": "done", "data": "[DONE]"}
                 return
 
