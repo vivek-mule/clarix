@@ -4,10 +4,45 @@ import Navbar from "./Navbar.jsx";
 export default function Layout() {
   return (
     <div className="app-shell">
+      {/* Ambient glow effects */}
       <div className="pointer-events-none fixed inset-0 -z-10" aria-hidden>
-        <div className="absolute -left-24 -top-16 h-72 w-72 rounded-full bg-cyan-300/30 blur-3xl" />
-        <div className="absolute -right-20 top-10 h-80 w-80 rounded-full bg-emerald-300/30 blur-3xl" />
-        <div className="absolute bottom-0 left-1/2 h-64 w-[34rem] -translate-x-1/2 rounded-full bg-sky-200/30 blur-3xl" />
+        <div
+          style={{
+            position: "absolute",
+            left: "-8rem",
+            top: "-4rem",
+            width: "28rem",
+            height: "28rem",
+            borderRadius: "50%",
+            background: "radial-gradient(circle, rgba(0, 212, 255, 0.06) 0%, transparent 70%)",
+            filter: "blur(40px)",
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            right: "-6rem",
+            top: "2rem",
+            width: "32rem",
+            height: "32rem",
+            borderRadius: "50%",
+            background: "radial-gradient(circle, rgba(123, 97, 255, 0.05) 0%, transparent 70%)",
+            filter: "blur(40px)",
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            bottom: "-2rem",
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: "36rem",
+            height: "22rem",
+            borderRadius: "50%",
+            background: "radial-gradient(circle, rgba(0, 232, 157, 0.04) 0%, transparent 70%)",
+            filter: "blur(50px)",
+          }}
+        />
       </div>
       <Navbar />
       <main className="page-main">

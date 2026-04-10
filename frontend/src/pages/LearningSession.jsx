@@ -7,18 +7,43 @@ import QuizModal from "../components/QuizModal.jsx";
 function Bubble({ role, children }) {
   const isUser = role === "user";
   return (
-    <div className={`flex ${isUser ? "justify-end" : "justify-start"} gap-2`}>
+    <div style={{ display: "flex", justifyContent: isUser ? "flex-end" : "flex-start", gap: "0.5rem" }}>
       <div
-        className={`max-w-[86%] rounded-2xl border px-4 py-3 ${
-          isUser
-            ? "border-cyan-700/30 bg-gradient-to-r from-cyan-700 to-sky-700 text-white"
-            : "border-[var(--color-border)] bg-white text-[var(--color-text)]"
-        }`}
+        style={{
+          maxWidth: "86%",
+          borderRadius: "1.15rem",
+          border: isUser
+            ? "1px solid rgba(0, 212, 255, 0.2)"
+            : "1px solid var(--color-border)",
+          padding: "0.85rem 1.1rem",
+          background: isUser
+            ? "linear-gradient(135deg, rgba(0, 212, 255, 0.12), rgba(0, 144, 204, 0.08))"
+            : "var(--color-surface-soft)",
+          transition: "transform 150ms ease",
+        }}
       >
-        <div className={`mb-1 text-[11px] font-semibold uppercase tracking-wider ${isUser ? "text-cyan-100" : "text-[var(--color-text-muted)]"}`}>
+        <div
+          style={{
+            marginBottom: "0.35rem",
+            fontSize: "0.68rem",
+            fontWeight: 700,
+            textTransform: "uppercase",
+            letterSpacing: "0.1em",
+            color: isUser ? "var(--color-primary)" : "var(--color-text-dim)",
+          }}
+        >
           {isUser ? "You" : "Tutor"}
         </div>
-        <div className="whitespace-pre-wrap text-sm leading-relaxed">{children}</div>
+        <div
+          style={{
+            whiteSpace: "pre-wrap",
+            fontSize: "0.88rem",
+            lineHeight: 1.65,
+            color: "var(--color-text)",
+          }}
+        >
+          {children}
+        </div>
       </div>
     </div>
   );
@@ -175,6 +200,16 @@ export default function LearningSession() {
     }
   };
 
+  const alertStyle = (type) => ({
+    marginTop: "0.75rem",
+    borderRadius: "var(--radius-xl)",
+    border: `1px solid ${type === "info" ? "rgba(0, 212, 255, 0.2)" : "rgba(255, 77, 106, 0.25)"}`,
+    background: type === "info" ? "var(--color-primary-glow)" : "var(--color-danger-soft)",
+    padding: "0.75rem 1rem",
+    fontSize: "0.85rem",
+    color: type === "info" ? "var(--color-primary)" : "var(--color-danger)",
+  });
+
   return (
     <section className="py-8 md:py-10 fade-in">
       <div className="grid gap-5 xl:grid-cols-[1.35fr_0.65fr]">
@@ -182,19 +217,70 @@ export default function LearningSession() {
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
               <span className="section-kicker">Realtime tutor</span>
-              <h1 className="mt-1 text-2xl font-bold tracking-tight">Learning session</h1>
-              <p className="mt-2 text-sm text-[var(--color-text-muted)]">
+              <h1
+                style={{
+                  marginTop: "0.3rem",
+                  fontSize: "1.45rem",
+                  fontWeight: 700,
+                  letterSpacing: "-0.02em",
+                  color: "var(--color-text)",
+                  fontFamily: "var(--font-display)",
+                }}
+              >
+                Learning session
+              </h1>
+              <p style={{ marginTop: "0.4rem", fontSize: "0.85rem", color: "var(--color-text-muted)" }}>
                 Ask concept questions, receive streamed explanations, and trigger quizzes when ready.
               </p>
             </div>
-            <div className="badge">{isStreaming ? "Streaming" : "Idle"}</div>
+            <div
+              className="badge"
+              style={{
+                background: isStreaming
+                  ? "linear-gradient(135deg, rgba(0, 232, 157, 0.15), rgba(0, 232, 157, 0.05))"
+                  : undefined,
+                border: isStreaming
+                  ? "1px solid rgba(0, 232, 157, 0.25)"
+                  : undefined,
+                color: isStreaming ? "var(--color-accent)" : undefined,
+              }}
+            >
+              {isStreaming && (
+                <span
+                  style={{
+                    display: "inline-block",
+                    width: "0.45rem",
+                    height: "0.45rem",
+                    borderRadius: "50%",
+                    background: "var(--color-accent)",
+                    animation: "pulse-dot 1.5s ease-in-out infinite",
+                    marginRight: "0.15rem",
+                  }}
+                />
+              )}
+              {isStreaming ? "Streaming" : "Idle"}
+            </div>
           </div>
 
-          {restoring ? <div className="mt-4 rounded-xl border border-blue-300 bg-blue-50 px-4 py-3 text-sm text-blue-700">Restoring session...</div> : null}
-          {streamError ? <div className="mt-4 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">{streamError}</div> : null}
-          {actionError ? <div className="mt-4 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">{actionError}</div> : null}
+          {restoring && <div style={alertStyle("info")}>Restoring session...</div>}
+          {streamError && <div style={alertStyle("error")}>{streamError}</div>}
+          {actionError && <div style={alertStyle("error")}>{actionError}</div>}
 
-          <div className="mt-5 flex-1 space-y-3 overflow-y-auto rounded-2xl border border-[var(--color-border)] bg-white/85 p-4">
+          {/* Messages area */}
+          <div
+            className="mt-5"
+            style={{
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
+              gap: "0.75rem",
+              overflowY: "auto",
+              borderRadius: "var(--radius-xl)",
+              border: "1px solid var(--color-border)",
+              background: "rgba(8, 12, 26, 0.5)",
+              padding: "1.15rem",
+            }}
+          >
             {messages.map((m, idx) => (
               <Bubble key={idx} role={m.role}>
                 {m.content}
@@ -204,17 +290,47 @@ export default function LearningSession() {
             {(streamedText || isStreaming) && (
               <Bubble role="assistant">
                 {streamedText || ""}
-                {isStreaming ? <span className="opacity-70"> ▍</span> : null}
+                {isStreaming ? (
+                  <span
+                    style={{
+                      opacity: 0.6,
+                      color: "var(--color-primary)",
+                      animation: "blink 1s step-end infinite",
+                    }}
+                  >
+                    {" "}▍
+                  </span>
+                ) : null}
               </Bubble>
             )}
 
             {!messages.length && !streamedText ? (
-              <div className="grid h-full min-h-[230px] place-items-center rounded-2xl border border-dashed border-[var(--color-border)] bg-[var(--color-surface-soft)] p-6 text-center text-sm text-[var(--color-text-muted)]">
-                Start by asking what topic you want to learn. The orchestrator will route your session automatically.
+              <div
+                style={{
+                  display: "grid",
+                  placeItems: "center",
+                  minHeight: "230px",
+                  borderRadius: "var(--radius-xl)",
+                  border: "1px dashed var(--color-border-strong)",
+                  background: "var(--color-surface-soft)",
+                  padding: "2rem",
+                  textAlign: "center",
+                  fontSize: "0.9rem",
+                  color: "var(--color-text-muted)",
+                  height: "100%",
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: "2rem", marginBottom: "0.75rem" }}>💡</div>
+                  Start by asking what topic you want to learn. The orchestrator will route your session automatically.
+                </div>
               </div>
             ) : null}
           </div>
 
+          <style>{`@keyframes blink { 50% { opacity: 0; } }`}</style>
+
+          {/* Input area */}
           <div className="mt-4 flex gap-3">
             <input
               value={input}
@@ -235,40 +351,87 @@ export default function LearningSession() {
         </article>
 
         <aside className="space-y-4">
+          {/* Session state panel */}
           <div className="surface-card p-5">
             <div className="section-kicker">Session state</div>
-            <div className="mt-3 space-y-3 text-sm">
-              <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-soft)] px-3 py-2">
-                <div className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">Session ID</div>
-                <div className="mt-1 truncate font-semibold text-[var(--color-text)]">{sessionId || "Not started"}</div>
-              </div>
-              <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-soft)] px-3 py-2">
-                <div className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">Current module</div>
-                <div className="mt-1 font-semibold text-[var(--color-text)]">{currentModule?.topic || "Awaiting orchestration"}</div>
-              </div>
-              <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-soft)] px-3 py-2">
-                <div className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">Mastery score</div>
-                <div className="mt-1 font-semibold text-[var(--color-text)]">{masteryScore !== null ? `${Math.round(masteryScore * 100)}%` : "Not available"}</div>
-              </div>
+            <div className="mt-3 space-y-3">
+              {[
+                { label: "Session ID", value: sessionId || "Not started" },
+                { label: "Current module", value: currentModule?.topic || "Awaiting orchestration" },
+                {
+                  label: "Mastery score",
+                  value: masteryScore !== null ? `${Math.round(masteryScore * 100)}%` : "Not available",
+                },
+              ].map((item) => (
+                <div
+                  key={item.label}
+                  style={{
+                    borderRadius: "var(--radius-xl)",
+                    border: "1px solid var(--color-border)",
+                    background: "var(--color-surface-soft)",
+                    padding: "0.65rem 0.85rem",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: "0.68rem",
+                      fontWeight: 700,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.1em",
+                      color: "var(--color-text-dim)",
+                    }}
+                  >
+                    {item.label}
+                  </div>
+                  <div
+                    style={{
+                      marginTop: "0.25rem",
+                      fontSize: "0.88rem",
+                      fontWeight: 600,
+                      color: "var(--color-text)",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {item.value}
+                  </div>
+                </div>
+              ))}
             </div>
 
             <button
               type="button"
               onClick={readyForQuiz}
               disabled={!sessionId}
-              className="btn-ghost mt-4 w-full text-sm disabled:cursor-not-allowed disabled:opacity-60"
+              className="btn-ghost mt-4 w-full text-sm"
+              style={{
+                opacity: !sessionId ? 0.5 : 1,
+                cursor: !sessionId ? "not-allowed" : "pointer",
+              }}
             >
-              Ready for quiz
+              🎯 Ready for quiz
             </button>
           </div>
 
+          {/* Tip card */}
           <div className="surface-card-soft p-5">
             <div className="section-kicker">Tip</div>
-            <h2 className="mt-2 text-lg font-bold tracking-tight">Get better adaptive responses</h2>
-            <p className="mt-2 text-sm text-[var(--color-text-muted)]">
-              Mention your exact confusion point, like “I understand formulas but not intuition”.
+            <h2
+              style={{
+                marginTop: "0.5rem",
+                fontSize: "1.05rem",
+                fontWeight: 700,
+                letterSpacing: "-0.01em",
+                color: "var(--color-text)",
+              }}
+            >
+              Get better adaptive responses
+            </h2>
+            <p style={{ marginTop: "0.55rem", fontSize: "0.85rem", color: "var(--color-text-muted)", lineHeight: 1.6 }}>
+              Mention your exact confusion point, like "I understand formulas but not intuition".
             </p>
-            <p className="mt-2 text-sm text-[var(--color-text-muted)]">
+            <p style={{ marginTop: "0.45rem", fontSize: "0.85rem", color: "var(--color-text-muted)", lineHeight: 1.6 }}>
               When done with a concept, use the quiz button so mastery routing can move you ahead.
             </p>
           </div>
@@ -285,4 +448,3 @@ export default function LearningSession() {
     </section>
   );
 }
-

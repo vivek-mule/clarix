@@ -10,13 +10,45 @@ export default function Navbar() {
     <header id="main-nav" className="sticky top-0 z-50 pb-1">
       <nav className="nav-shell px-4 py-3 sm:px-5">
         <div className="flex flex-wrap items-center gap-3">
-          <Link to="/" className="inline-flex items-center gap-2.5">
-            <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-cyan-600 to-sky-700 font-extrabold text-white shadow-lg">
+          <Link to="/" className="inline-flex items-center gap-2.5 group">
+            <span
+              style={{
+                display: "grid",
+                height: "2.2rem",
+                width: "2.2rem",
+                placeItems: "center",
+                borderRadius: "0.7rem",
+                background: "linear-gradient(135deg, var(--color-primary), #0090cc)",
+                fontWeight: 800,
+                fontSize: "0.9rem",
+                color: "#fff",
+                boxShadow: "0 4px 14px rgba(0, 212, 255, 0.25)",
+                transition: "transform 200ms ease, box-shadow 200ms ease",
+              }}
+            >
               P
             </span>
             <div>
-              <div className="font-semibold leading-tight text-[var(--color-text)]">Pragyantra LearnOS</div>
-              <div className="text-xs text-[var(--color-text-muted)]">Adaptive learning cockpit</div>
+              <div
+                style={{
+                  fontWeight: 650,
+                  fontSize: "0.92rem",
+                  lineHeight: 1.2,
+                  color: "var(--color-text)",
+                  letterSpacing: "-0.01em",
+                }}
+              >
+                Pragyantra LearnOS
+              </div>
+              <div
+                style={{
+                  fontSize: "0.7rem",
+                  color: "var(--color-text-dim)",
+                  letterSpacing: "0.02em",
+                }}
+              >
+                Adaptive learning cockpit
+              </div>
             </div>
           </Link>
 
