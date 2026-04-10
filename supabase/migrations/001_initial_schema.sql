@@ -1,6 +1,6 @@
 -- ============================================================
 --  Adaptive Learning Platform — Supabase SQL Migration
---  Tables: student_profiles, quiz_attempts, session_logs
+--  Tables: student_profiles, quiz_attempts, session_logs, learning_sessions
 --  All tables have Row-Level Security (RLS) enabled.
 -- ============================================================
 
@@ -11,7 +11,6 @@
 CREATE TABLE IF NOT EXISTS student_profiles (
     id                   UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     name                 TEXT NOT NULL,
-    subject              TEXT NOT NULL,
     onboarding_complete  BOOLEAN DEFAULT FALSE,
     learning_style       TEXT,
     knowledge_levels     JSONB DEFAULT '{}',
@@ -121,4 +120,43 @@ CREATE POLICY "Students can update their own session logs"
 
 CREATE POLICY "Students can delete their own session logs"
     ON session_logs FOR DELETE
+    USING (auth.uid() = student_id);
+
+
+-- ────────────────────────────────────────────────────────────
+--  4. learning_sessions
+-- ────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS learning_sessions (
+    id              UUID PRIMARY KEY,
+    student_id      UUID NOT NULL REFERENCES student_profiles(id) ON DELETE CASCADE,
+    title           TEXT NOT NULL DEFAULT '',
+    status          TEXT NOT NULL DEFAULT 'active',
+    state           JSONB NOT NULL DEFAULT '{}',
+    created_at      TIMESTAMPTZ DEFAULT now(),
+    updated_at      TIMESTAMPTZ DEFAULT now(),
+    last_message_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TRIGGER trg_learning_sessions_updated_at
+    BEFORE UPDATE ON learning_sessions
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at();
+
+ALTER TABLE learning_sessions ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Students can view their own learning sessions"
+    ON learning_sessions FOR SELECT
+    USING (auth.uid() = student_id);
+
+CREATE POLICY "Students can insert their own learning sessions"
+    ON learning_sessions FOR INSERT
+    WITH CHECK (auth.uid() = student_id);
+
+CREATE POLICY "Students can update their own learning sessions"
+    ON learning_sessions FOR UPDATE
+    USING (auth.uid() = student_id)
+    WITH CHECK (auth.uid() = student_id);
+
+CREATE POLICY "Students can delete their own learning sessions"
+    ON learning_sessions FOR DELETE
     USING (auth.uid() = student_id);

@@ -6,7 +6,7 @@ answers SEMANTICALLY (not keyword matching), and writes the resulting
 knowledge_levels map back to Supabase.
 
 Flow:
-    1. Generate questions tailored to the student's subject
+    1. Generate questions tailored to the student's current learning context
     2. (In production the student answers; here we assume answers are
        passed in via state["messages"])
     3. Evaluate each answer semantically via Gemini
@@ -28,10 +28,12 @@ from db.student_profile import update_profile
 # ── Prompt templates ────────────────────────────────────────
 
 GENERATE_QUESTIONS_PROMPT = """\
-You are an expert educational assessor.  The student is studying **{subject}**.
+You are an expert educational assessor.
+
+The student is currently focused on: **{learning_context}**.
 
 Generate exactly {num_questions} diagnostic multiple-choice questions that
-span different topics and difficulty levels within the subject.  The goal
+span different topics and difficulty levels within this context.  The goal
 is to map the student's current knowledge.
 
 Return ONLY a valid JSON array.  Each element must have:
@@ -82,7 +84,7 @@ def assessment_agent(state: AgentState) -> AgentState:
 
     Expects:
         state["student_id"]
-        state["student_profile"]  (needs "subject")
+        state["student_profile"]
         state["messages"]         (student answers as the last HumanMessage,
                                    formatted as JSON: [{"id": 1, "answer": "B"}, ...])
 
@@ -91,13 +93,23 @@ def assessment_agent(state: AgentState) -> AgentState:
         Writes knowledge_levels to Supabase.
     """
     profile = state.get("student_profile", {})
-    subject = profile.get("subject", "general")
+    module = state.get("current_module", {})
+    learning_context = module.get("topic", "general concepts")
+
+    # If there is no module topic yet, use latest user message as context.
+    for msg in reversed(state.get("messages", [])):
+        if isinstance(msg, dict) and msg.get("role") == "user":
+            text = str(msg.get("content", "")).strip()
+            if text:
+                learning_context = text
+                break
+
     num_questions = 6  # within the 5-8 range
 
     # ── Step 1: Generate diagnostic questions ───────────────
     gen_messages = [
         SystemMessage(content=GENERATE_QUESTIONS_PROMPT.format(
-            subject=subject,
+            learning_context=learning_context,
             num_questions=num_questions,
         )),
         HumanMessage(content="Generate the diagnostic questions now."),

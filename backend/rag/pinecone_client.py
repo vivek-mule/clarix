@@ -82,7 +82,7 @@ def upsert_vectors(
                         id       (str)
                         values   (list[float], 384-dim)
                         metadata (dict, optional)
-        namespace:  Pinecone namespace (e.g. the subject name).
+        namespace:  Pinecone namespace label.
         batch_size: Number of vectors per upsert call.
 
     Returns:
@@ -137,3 +137,95 @@ def query_vectors(
         }
         for match in results.matches
     ]
+
+
+def list_namespaces() -> list[str]:
+    """
+    Return all non-empty namespaces currently present in the Pinecone index.
+    """
+    index = _ensure_index()
+    if index is None:
+        return []
+
+    try:
+        stats = index.describe_index_stats()
+    except Exception:
+        return []
+
+    namespaces: dict = {}
+    if isinstance(stats, dict):
+        namespaces = stats.get("namespaces", {}) or {}
+    else:
+        as_dict = {}
+        to_dict = getattr(stats, "to_dict", None)
+        if callable(to_dict):
+            try:
+                as_dict = to_dict() or {}
+            except Exception:
+                as_dict = {}
+        namespaces = as_dict.get("namespaces", {}) or getattr(stats, "namespaces", {}) or {}
+
+    if not isinstance(namespaces, dict):
+        return []
+
+    found: list[str] = []
+    for ns, meta in namespaces.items():
+        if ns is None:
+            continue
+
+        count = 0
+        if isinstance(meta, dict):
+            count = int(meta.get("vector_count", 0) or 0)
+        else:
+            count = int(getattr(meta, "vector_count", 0) or 0)
+
+        if count > 0:
+            found.append(str(ns))
+
+    return sorted(found)
+
+
+def query_vectors_across_namespaces(
+    vector: list[float],
+    namespaces: list[str] | None = None,
+    top_k: int = 5,
+    include_metadata: bool = True,
+    per_namespace_top_k: int | None = None,
+) -> list[dict]:
+    """
+    Query multiple namespaces and return the globally top-scoring matches.
+    """
+    if top_k <= 0:
+        return []
+
+    target_namespaces = namespaces if namespaces is not None else list_namespaces()
+    if not target_namespaces:
+        return query_vectors(
+            vector=vector,
+            namespace="",
+            top_k=top_k,
+            include_metadata=include_metadata,
+        )
+
+    ns_top_k = per_namespace_top_k or max(3, top_k)
+    merged: list[dict] = []
+
+    for ns in target_namespaces:
+        try:
+            matches = query_vectors(
+                vector=vector,
+                namespace=ns,
+                top_k=ns_top_k,
+                include_metadata=include_metadata,
+            )
+        except Exception:
+            continue
+
+        for match in matches:
+            merged.append({
+                **match,
+                "namespace": ns,
+            })
+
+    merged.sort(key=lambda m: float(m.get("score", 0.0) or 0.0), reverse=True)
+    return merged[:top_k]

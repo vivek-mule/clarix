@@ -60,7 +60,7 @@ def get_progress(student_id: str) -> Optional[dict]:
 
 # ── Create ──────────────────────────────────────────────────
 
-def create_profile(student_id: str, name: str, subject: str) -> dict:
+def create_profile(student_id: str, name: str) -> dict:
     """
     Insert a blank student_profiles row for a newly registered user.
     All JSONB/int fields default to their SQL defaults.
@@ -68,7 +68,6 @@ def create_profile(student_id: str, name: str, subject: str) -> dict:
     row = {
         "id": student_id,
         "name": name,
-        "subject": subject,
     }
     res = supabase_admin.table(TABLE).insert(row).execute()
     return res.data[0] if res.data else {}

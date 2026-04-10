@@ -16,12 +16,12 @@ Ties together the embedder and Pinecone client into a single call:
 from __future__ import annotations
 
 from rag.embedder import get_embedding
-from rag.pinecone_client import query_vectors
+from rag.pinecone_client import query_vectors, query_vectors_across_namespaces
 
 
 def retrieve_chunks(
     query: str,
-    namespace: str,
+    namespace: str | None = None,
     top_k: int = 5,
 ) -> list[str]:
     """
@@ -30,7 +30,7 @@ def retrieve_chunks(
 
     Args:
         query:     The user's natural-language question.
-        namespace: Pinecone namespace to search (= subject name).
+        namespace: Pinecone namespace to search.
         top_k:     Maximum number of chunks to return.
 
     Returns:
@@ -43,12 +43,19 @@ def retrieve_chunks(
     query_vector = get_embedding(query)
 
     # 2. Similarity search in Pinecone
-    matches = query_vectors(
-        vector=query_vector,
-        namespace=namespace,
-        top_k=top_k,
-        include_metadata=True,
-    )
+    if namespace and namespace.strip():
+        matches = query_vectors(
+            vector=query_vector,
+            namespace=namespace.strip().lower(),
+            top_k=top_k,
+            include_metadata=True,
+        )
+    else:
+        matches = query_vectors_across_namespaces(
+            vector=query_vector,
+            top_k=top_k,
+            include_metadata=True,
+        )
 
     # 3. Extract the text payload from each match
     chunks: list[str] = []
@@ -62,7 +69,7 @@ def retrieve_chunks(
 
 def retrieve_chunks_with_metadata(
     query: str,
-    namespace: str,
+    namespace: str | None = None,
     top_k: int = 5,
 ) -> list[dict]:
     """
@@ -85,12 +92,19 @@ def retrieve_chunks_with_metadata(
     """
     query_vector = get_embedding(query)
 
-    matches = query_vectors(
-        vector=query_vector,
-        namespace=namespace,
-        top_k=top_k,
-        include_metadata=True,
-    )
+    if namespace and namespace.strip():
+        matches = query_vectors(
+            vector=query_vector,
+            namespace=namespace.strip().lower(),
+            top_k=top_k,
+            include_metadata=True,
+        )
+    else:
+        matches = query_vectors_across_namespaces(
+            vector=query_vector,
+            top_k=top_k,
+            include_metadata=True,
+        )
 
     results: list[dict] = []
     for match in matches:
@@ -100,6 +114,7 @@ def retrieve_chunks_with_metadata(
         results.append({
             "id":    match["id"],
             "score": match["score"],
+            "namespace": match.get("namespace", namespace or ""),
             **meta,
         })
 

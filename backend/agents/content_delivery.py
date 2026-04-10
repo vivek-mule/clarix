@@ -1,8 +1,8 @@
 """
 agents/content_delivery.py — Personalised content delivery agent.
 
-1. Embeds the current module topic locally (all-MiniLM-L6-v2)
-2. Queries Pinecone via rag/retriever.py for relevant course chunks
+1. Embeds the latest student query locally (all-MiniLM-L6-v2)
+2. Queries Pinecone via rag/retriever.py across available namespaces
 3. Sends retrieved chunks + student profile to Gemini
 4. Generates a personalised explanation adapted to learning_style
 5. Streams response tokens into state["stream_output"]
@@ -14,18 +14,22 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from agents.state import AgentState
 from agents.llm import llm
+from config import settings
 from rag.retriever import retrieve_chunks
 
 
 CONTENT_PROMPT = """\
-You are an expert {subject} tutor delivering a lesson.
+You are an expert tutor delivering a lesson.
 
 **Student profile:**
 - Name: {name}
 - Learning style: {learning_style}  (adapt your explanations accordingly)
 - Current knowledge level on this topic: {topic_level}
 
-**Module being taught:**
+**Requested topic/question:**
+- {query}
+
+**Current module context (if any):**
 - Topic: {topic}
 - Difficulty: {difficulty}
 - Learning objectives: {objectives}
@@ -45,7 +49,26 @@ source — do NOT invent facts):**
 3. Highlight key concepts in **bold**.
 4. End with 2-3 quick comprehension check questions.
 5. Keep the total length between 400-800 words.
+6. If the provided reference material is insufficient for a claim, explicitly
+   say what is missing instead of hallucinating.
 """
+
+
+def _latest_user_message(state: AgentState) -> str:
+    """Return the latest user-authored message content from session state."""
+    for msg in reversed(state.get("messages", [])):
+        if isinstance(msg, dict) and msg.get("role") == "user":
+            return str(msg.get("content", ""))
+        if isinstance(msg, HumanMessage):
+            return str(msg.content)
+    return ""
+
+
+def _topic_label(text: str, fallback: str = "General learning request", max_len: int = 140) -> str:
+    compact = " ".join((text or "").split())
+    if not compact:
+        return fallback
+    return compact[:max_len]
 
 
 def content_delivery_agent(state: AgentState) -> AgentState:
@@ -62,8 +85,9 @@ def content_delivery_agent(state: AgentState) -> AgentState:
     """
     profile = state.get("student_profile", {})
     module = state.get("current_module", {})
-    subject = profile.get("subject", "general")
-    topic = module.get("topic", "unknown")
+    latest_query = _latest_user_message(state).strip()
+    topic = _topic_label(latest_query, fallback=module.get("topic", "General learning request"))
+    retrieval_query = latest_query or module.get("topic", "") or topic
     difficulty = module.get("difficulty", "beginner")
     objectives = module.get("learning_objectives", [])
     learning_style = profile.get("learning_style", "reading")
@@ -75,20 +99,35 @@ def content_delivery_agent(state: AgentState) -> AgentState:
 
     # ── Step 1 & 2: Retrieve relevant chunks from Pinecone ──
     chunks = retrieve_chunks(
-        query=topic,
-        namespace=subject,
-        top_k=5,
+        query=retrieval_query,
+        namespace=None,
+        top_k=max(1, settings.rag_top_k),
     )
+    print(f"🔎 RAG query='{retrieval_query[:100]}' top_k={max(1, settings.rag_top_k)} chunks={len(chunks)}")
 
-    chunks_text = "\n\n---\n\n".join(chunks) if chunks else "(No course material found — teach from your own knowledge.)"
+    if not chunks:
+        state["stream_output"] = [
+            "I could not find relevant material for that query in the current knowledge base. "
+            "Please rephrase the question or ingest content for this topic so I can answer from grounded sources."
+        ]
+        state["current_agent"] = "content_delivery"
+        state["retrieved_chunks"] = []
+        state["current_module"] = {
+            **module,
+            "topic": topic,
+            "difficulty": difficulty,
+        }
+        return state
+
+    chunks_text = "\n\n---\n\n".join(chunks)
 
     # ── Step 3: Build the prompt ────────────────────────────
     messages = [
         SystemMessage(content=CONTENT_PROMPT.format(
-            subject=subject,
             name=profile.get("name", "Student"),
             learning_style=learning_style,
             topic_level=topic_level,
+            query=retrieval_query,
             topic=topic,
             difficulty=difficulty,
             objectives=", ".join(objectives) if objectives else "General understanding",
@@ -108,4 +147,9 @@ def content_delivery_agent(state: AgentState) -> AgentState:
 
     state["current_agent"] = "content_delivery"
     state["retrieved_chunks"] = chunks
+    state["current_module"] = {
+        **module,
+        "topic": topic,
+        "difficulty": difficulty,
+    }
     return state

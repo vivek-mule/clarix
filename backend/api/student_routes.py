@@ -17,6 +17,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
 from auth.jwt_dependency import get_current_user_id
+from db.quiz_attempts import get_all_attempts
 from db.student_profile import get_profile, get_progress, mark_onboarding_complete
 
 router = APIRouter(prefix="/student", tags=["Student"])
@@ -33,7 +34,6 @@ class OnboardingRequest(BaseModel):
 class ProfileResponse(BaseModel):
     id: str
     name: str
-    subject: str
     onboarding_complete: bool
     learning_style: Optional[str]
     knowledge_levels: dict
@@ -50,6 +50,15 @@ class ProgressResponse(BaseModel):
     knowledge_levels: dict
     struggle_topics: list
     onboarding_complete: bool
+
+
+class QuizAttemptResponse(BaseModel):
+    id: str
+    module_topic: str
+    score: float
+    questions: list
+    attempt_number: int
+    created_at: str
 
 
 # ── Routes ──────────────────────────────────────────────────
@@ -100,3 +109,20 @@ async def read_progress(student_id: str = Depends(get_current_user_id)):
             detail="Student profile not found.",
         )
     return ProgressResponse(**progress)
+
+
+@router.get("/quiz-attempts", response_model=list[QuizAttemptResponse])
+async def read_quiz_attempts(student_id: str = Depends(get_current_user_id)):
+    """Return quiz attempts for the authenticated user, newest first."""
+    attempts = get_all_attempts(student_id)
+    payload: list[QuizAttemptResponse] = []
+    for row in attempts:
+        payload.append(QuizAttemptResponse(
+            id=row.get("id", ""),
+            module_topic=row.get("module_topic", ""),
+            score=row.get("score", 0.0),
+            questions=row.get("questions", []),
+            attempt_number=row.get("attempt_number", 1),
+            created_at=str(row.get("created_at", "")),
+        ))
+    return payload

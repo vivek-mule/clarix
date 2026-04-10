@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { agentStartSession, agentSubmitAnswer } from "../lib/api.js";
-import { useAuth } from "../hooks/useAuth.jsx";
+import { useSearchParams } from "react-router-dom";
+import { agentStartSession, agentSubmitAnswer, getAgentSession } from "../lib/api.js";
 import { useSSE } from "../hooks/useSSE.js";
 import QuizModal from "../components/QuizModal.jsx";
 
@@ -25,18 +25,18 @@ function Bubble({ role, children }) {
 }
 
 export default function LearningSession() {
-  const { profile } = useAuth();
-
+  const [searchParams] = useSearchParams();
   const [sessionId, setSessionId] = useState(null);
   const [sessionMeta, setSessionMeta] = useState(null);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState([]);
   const [actionError, setActionError] = useState(null);
+  const [restoring, setRestoring] = useState(false);
 
   const [quizOpen, setQuizOpen] = useState(false);
   const [quizSubmitting, setQuizSubmitting] = useState(false);
 
-  const { text: streamedText, isStreaming, error: streamError, start: startStream } = useSSE({
+  const { text: streamedText, isStreaming, error: streamError, start: startStream, reset: resetStream } = useSSE({
     sessionId,
     enabled: Boolean(sessionId),
   });
@@ -48,6 +48,57 @@ export default function LearningSession() {
     if (awaitingQuiz) setQuizOpen(true);
   }, [awaitingQuiz]);
 
+  useEffect(() => {
+    const existingSessionId = searchParams.get("session_id");
+    if (!existingSessionId) return;
+
+    let mounted = true;
+    setRestoring(true);
+    setActionError(null);
+
+    getAgentSession({ session_id: existingSessionId })
+      .then((res) => {
+        if (!mounted) return;
+        setSessionId(res.session_id || existingSessionId);
+        setSessionMeta({
+          session_id: res.session_id || existingSessionId,
+          next_action: res.next_action || "",
+          current_agent: res.current_agent || "",
+          current_module: res.current_module || {},
+          diagnostic_results: res.diagnostic_results || {},
+          quiz_results: res.quiz_results || {},
+          mastery_score: typeof res.mastery_score === "number" ? res.mastery_score : -1,
+        });
+        const restoredMessages = Array.isArray(res.messages)
+          ? res.messages.filter((m) => m && (m.role === "user" || m.role === "assistant"))
+          : [];
+        setMessages(restoredMessages);
+      })
+      .catch((e) => {
+        if (!mounted) return;
+        setActionError(e?.response?.data?.detail || e?.message || "Could not restore session");
+      })
+      .finally(() => {
+        if (mounted) setRestoring(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (isStreaming) return;
+    if (!streamedText) return;
+
+    setMessages((prev) => {
+      const last = prev[prev.length - 1];
+      if (last?.role === "assistant" && last?.content === streamedText) return prev;
+      return [...prev, { role: "assistant", content: streamedText }];
+    });
+    resetStream();
+  }, [isStreaming, streamedText, resetStream]);
+
   const canStart = useMemo(() => !sessionId, [sessionId]);
   const currentModule = sessionMeta?.current_module || {};
   const masteryScore = typeof sessionMeta?.mastery_score === "number" ? sessionMeta.mastery_score : null;
@@ -56,7 +107,7 @@ export default function LearningSession() {
     setActionError(null);
     const firstMessage =
       input.trim() ||
-      `Help me learn ${profile?.subject || "this subject"}. Start with my current level and teach me one module.`;
+      "Help me learn this topic from basics and include practical examples.";
 
     setMessages((prev) => [...prev, { role: "user", content: firstMessage }]);
     setInput("");
@@ -139,6 +190,7 @@ export default function LearningSession() {
             <div className="badge">{isStreaming ? "Streaming" : "Idle"}</div>
           </div>
 
+          {restoring ? <div className="mt-4 rounded-xl border border-blue-300 bg-blue-50 px-4 py-3 text-sm text-blue-700">Restoring session...</div> : null}
           {streamError ? <div className="mt-4 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">{streamError}</div> : null}
           {actionError ? <div className="mt-4 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">{actionError}</div> : null}
 

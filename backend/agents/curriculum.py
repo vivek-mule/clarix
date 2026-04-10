@@ -23,7 +23,6 @@ results and profile, generate a structured, ordered learning path.
 
 **Student profile:**
 - Name: {name}
-- Subject: {subject}
 - Learning style: {learning_style}
 - Current knowledge levels: {knowledge_levels}
 
@@ -73,7 +72,6 @@ def curriculum_agent(state: AgentState) -> AgentState:
     messages = [
         SystemMessage(content=CURRICULUM_PROMPT.format(
             name=profile.get("name", "Student"),
-            subject=profile.get("subject", "general"),
             learning_style=profile.get("learning_style", "not specified"),
             knowledge_levels=json.dumps(knowledge_levels, indent=2),
         )),

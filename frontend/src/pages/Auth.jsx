@@ -21,7 +21,6 @@ export default function Auth() {
     email: "",
     password: "",
     name: "",
-    subject: "physics",
   });
 
   const title = useMemo(() => (mode === "login" ? "Welcome back" : "Create your account"), [mode]);
@@ -38,7 +37,6 @@ export default function Auth() {
           email: form.email,
           password: form.password,
           name: form.name,
-          subject: form.subject,
         });
       }
       const next = authRes?.profile?.onboarding_complete ? "/dashboard" : "/onboarding";
@@ -100,20 +98,6 @@ export default function Auth() {
                     placeholder="Vivek"
                     required
                   />
-
-                  <label className="form-label">
-                    Subject
-                    <select
-                      value={form.subject}
-                      onChange={(e) => setForm((p) => ({ ...p, subject: e.target.value }))}
-                      className="select-control"
-                    >
-                      <option value="physics">Physics</option>
-                      <option value="math">Math</option>
-                      <option value="chemistry">Chemistry</option>
-                      <option value="biology">Biology</option>
-                    </select>
-                  </label>
                 </>
               )}
 

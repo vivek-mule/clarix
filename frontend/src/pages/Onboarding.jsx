@@ -13,7 +13,7 @@ const STYLES = [
 ];
 
 const LEVELS = [
-  { id: "beginner", label: "Beginner", desc: "I’m new to most of this subject." },
+  { id: "beginner", label: "Beginner", desc: "I’m new to most of these topics." },
   { id: "intermediate", label: "Intermediate", desc: "I know fundamentals and want to build depth." },
   { id: "advanced", label: "Advanced", desc: "I’m comfortable and want harder problems + nuance." },
 ];
@@ -44,7 +44,7 @@ export default function Onboarding() {
 
   const [learningStyle, setLearningStyle] = useState("reading");
   const [experienceLevel, setExperienceLevel] = useState("beginner");
-  const [subjectHint, setSubjectHint] = useState("core");
+  const [focusHint, setFocusHint] = useState("core");
 
   const progressPct = useMemo(() => Math.round((step / 3) * 100), [step]);
 
@@ -56,7 +56,7 @@ export default function Onboarding() {
     setError(null);
     try {
       // Backend expects knowledge_levels dict; we seed a coarse baseline.
-      const knowledge_levels = { [subjectHint]: { level: experienceLevel } };
+      const knowledge_levels = { [focusHint]: { level: experienceLevel } };
       await saveOnboarding({
         learning_style: learningStyle,
         knowledge_levels,
@@ -121,28 +121,28 @@ export default function Onboarding() {
               </p>
               <div className="mt-5 grid gap-3 sm:grid-cols-2">
                 <CardOption
-                  selected={subjectHint === "core"}
+                  selected={focusHint === "core"}
                   title="Core concepts"
                   desc="Fundamentals, principles, and definitions."
-                  onClick={() => setSubjectHint("core")}
+                  onClick={() => setFocusHint("core")}
                 />
                 <CardOption
-                  selected={subjectHint === "problem_solving"}
+                  selected={focusHint === "problem_solving"}
                   title="Problem solving"
                   desc="Application-oriented, stepwise solution building."
-                  onClick={() => setSubjectHint("problem_solving")}
+                  onClick={() => setFocusHint("problem_solving")}
                 />
                 <CardOption
-                  selected={subjectHint === "applications"}
+                  selected={focusHint === "applications"}
                   title="Applications"
                   desc="Real-world context, examples, and intuition."
-                  onClick={() => setSubjectHint("applications")}
+                  onClick={() => setFocusHint("applications")}
                 />
                 <CardOption
-                  selected={subjectHint === "exam_prep"}
+                  selected={focusHint === "exam_prep"}
                   title="Exam prep"
                   desc="Speed, patterns, and accuracy for assessments."
-                  onClick={() => setSubjectHint("exam_prep")}
+                  onClick={() => setFocusHint("exam_prep")}
                 />
               </div>
             </>

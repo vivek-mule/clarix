@@ -32,6 +32,7 @@ sse-starlette==2.1.3
 # ── Content Ingestion ───────────────────────────────────────
 python-pptx==1.0.2                    # .pptx slide extraction
 pypdf==4.2.0                          # .pdf text extraction for slide decks
+pdfplumber==0.11.5                    # .pdf text + table extraction
 
 # ── Utilities ───────────────────────────────────────────────
 python-multipart==0.0.20              # file uploads in FastAPI

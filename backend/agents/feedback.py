@@ -15,13 +15,19 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from agents.state import AgentState
 from agents.llm import llm
+from config import settings
+from rag.retriever import retrieve_chunks
 
 
 QUIZ_GENERATION_PROMPT = """\
-You are an expert quiz creator for **{subject}**.
+You are an expert quiz creator.
 
 Generate exactly {num_questions} quiz questions on the topic: **{topic}**
 Difficulty level: **{difficulty}**
+
+Use the following grounded reference material as the primary source for facts:
+
+{chunks}
 
 The questions should test genuine understanding, not just memorisation.
 Mix question types: conceptual, application, and analysis.
@@ -68,6 +74,11 @@ Return a JSON array.  No markdown fences.
 """
 
 
+def _looks_like_structured_answers(text: str) -> bool:
+    t = (text or "").strip()
+    return (t.startswith("[") and t.endswith("]")) or (t.startswith("{") and t.endswith("}"))
+
+
 def feedback_agent(state: AgentState) -> AgentState:
     """
     Generate a quiz, evaluate answers, and return mastery score + feedback.
@@ -87,25 +98,33 @@ def feedback_agent(state: AgentState) -> AgentState:
         state["mastery_score"]
         state["stream_output"]  (rendered feedback)
     """
-    profile = state.get("student_profile", {})
     module = state.get("current_module", {})
-    subject = profile.get("subject", "general")
-    topic = module.get("topic", "unknown")
+    topic = module.get("topic", "General learning request")
     difficulty = module.get("difficulty", "intermediate")
     num_questions = 4  # within the 3-5 range
 
-    # Check if we already have generated questions in state
+    # Check if we already have generated questions for this exact topic.
     existing_quiz = state.get("quiz_results", {})
-    questions = existing_quiz.get("questions")
+    existing_topic = str(existing_quiz.get("topic", "")).strip()
+    questions = existing_quiz.get("questions") if existing_topic == topic else None
+    print(f"🧪 Quiz topic='{topic[:100]}' existing_topic='{existing_topic[:100]}' reused={bool(questions)}")
 
     # ── Phase 1: Generate quiz questions ────────────────────
     if not questions:
+        chunks = retrieve_chunks(
+            query=topic,
+            namespace=None,
+            top_k=max(1, settings.quiz_rag_top_k),
+        )
+        print(f"🔎 Quiz RAG topic='{topic[:100]}' top_k={max(1, settings.quiz_rag_top_k)} chunks={len(chunks)}")
+        chunks_text = "\n\n---\n\n".join(chunks) if chunks else "(No grounded chunks found for this topic.)"
+
         gen_messages = [
             SystemMessage(content=QUIZ_GENERATION_PROMPT.format(
-                subject=subject,
                 topic=topic,
                 difficulty=difficulty,
                 num_questions=num_questions,
+                chunks=chunks_text,
             )),
             HumanMessage(content="Generate the quiz now."),
         ]
@@ -119,12 +138,12 @@ def feedback_agent(state: AgentState) -> AgentState:
             questions = json.loads(raw)
         except json.JSONDecodeError:
             state["current_agent"] = "feedback"
-            state["quiz_results"] = {"error": "Failed to generate quiz questions"}
+            state["quiz_results"] = {"error": "Failed to generate quiz questions", "topic": topic}
             state["mastery_score"] = 0.0
             return state
 
         state["current_agent"] = "feedback"
-        state["quiz_results"] = {"questions": questions, "awaiting_answers": True}
+        state["quiz_results"] = {"topic": topic, "questions": questions, "awaiting_answers": True}
         state["mastery_score"] = 0.0
         return state
 
@@ -138,9 +157,9 @@ def feedback_agent(state: AgentState) -> AgentState:
             student_answers_raw = msg.content
             break
 
-    if not student_answers_raw:
+    if not student_answers_raw or not _looks_like_structured_answers(student_answers_raw):
         state["current_agent"] = "feedback"
-        state["quiz_results"] = {"questions": questions, "awaiting_answers": True}
+        state["quiz_results"] = {"topic": topic, "questions": questions, "awaiting_answers": True}
         state["mastery_score"] = 0.0
         return state
 
@@ -190,6 +209,7 @@ def feedback_agent(state: AgentState) -> AgentState:
 
     state["current_agent"] = "feedback"
     state["quiz_results"] = {
+        "topic": topic,
         "questions": questions,
         "evaluations": evaluations,
         "correct": correct_count,

@@ -22,7 +22,6 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     password: str
     name: str
-    subject: str          # e.g. "physics", "math"
 
 
 class LoginRequest(BaseModel):
@@ -64,7 +63,6 @@ async def register(body: RegisterRequest):
         create_profile(
             student_id=user.id,
             name=body.name,
-            subject=body.subject,
         )
     except Exception as e:
         # Non-fatal: the user exists in auth even if profile insert fails.
