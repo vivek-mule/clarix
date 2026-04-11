@@ -35,3 +35,8 @@ Thumbs.db
 
 # ── GCP ──────────────────────────────────────────────────────
 gcp-key.json
+
+uv.lock
+/backend/README.md
+pyproject.toml
+.python-version
