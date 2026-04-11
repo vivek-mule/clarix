@@ -166,3 +166,31 @@ export async function streamAgentTokens({ session_id, signal, onToken, onDone, o
   // treat end-of-stream as completion so the UI doesn't remain stuck.
   onDone?.();
 }
+
+
+// ── Upload / Document APIs ────────────────────────────────
+
+export async function uploadPdf(file) {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await api.post("/upload/pdf", form, {
+    headers: { "Content-Type": "multipart/form-data" },
+    timeout: 120_000, // 2 min for large files
+  });
+  return res.data;
+}
+
+export async function getDocuments() {
+  const res = await api.get("/upload/documents");
+  return res.data;
+}
+
+export async function getDocumentDetail(docId) {
+  const res = await api.get(`/upload/document/${encodeURIComponent(docId)}`);
+  return res.data;
+}
+
+export async function generateDocumentSummary(docId) {
+  const res = await api.post(`/upload/document/${encodeURIComponent(docId)}/summary`);
+  return res.data;
+}

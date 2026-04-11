@@ -6,6 +6,8 @@ import Landing from "./pages/Landing.jsx";
 import Onboarding from "./pages/Onboarding.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import LearningSession from "./pages/LearningSession.jsx";
+import Setup from "./pages/Setup.jsx";
+import Summary from "./pages/Summary.jsx";
 import { useAuth } from "./hooks/useAuth.jsx";
 
 function AuthLoadingScreen() {
@@ -59,6 +61,8 @@ export default function App() {
             <Route path="/onboarding" element={<Onboarding />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/session" element={<LearningSession />} />
+            <Route path="/setup" element={<Setup />} />
+            <Route path="/summary/:docId" element={<Summary />} />
           </Route>
         </Route>
 

@@ -74,10 +74,12 @@ app.add_middleware(
 from api.auth_routes import router as auth_router        # noqa: E402
 from api.student_routes import router as student_router  # noqa: E402
 from api.agent_routes import router as agent_router      # noqa: E402
+from api.upload_routes import router as upload_router    # noqa: E402
 
 app.include_router(auth_router)
 app.include_router(student_router)
 app.include_router(agent_router)
+app.include_router(upload_router)
 
 
 # ── Health check ────────────────────────────────────────────
