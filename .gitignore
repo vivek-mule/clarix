@@ -40,3 +40,6 @@ uv.lock
 /backend/README.md
 pyproject.toml
 .python-version
+package-lock.json
+frontend/package-lock.json
+/frontend/package-lock.json
