@@ -14,9 +14,11 @@ import {
   FiTarget,
   FiArrowUpRight,
   FiLayers,
+  FiFile,
+  FiUploadCloud,
 } from "react-icons/fi";
 import { useAuth } from "../hooks/useAuth.jsx";
-import { getAgentSessions, getQuizAttempts } from "../lib/api.js";
+import { getAgentSessions, getQuizAttempts, getDocuments } from "../lib/api.js";
 
 /* ── Animation Variants ── */
 const fadeUp = {
@@ -149,6 +151,7 @@ export default function Dashboard() {
   const nav = useNavigate();
   const [sessions, setSessions] = useState([]);
   const [attempts, setAttempts] = useState([]);
+  const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -156,15 +159,12 @@ export default function Dashboard() {
     let mounted = true;
     setLoading(true);
     setError(null);
-    Promise.all([getAgentSessions(), getQuizAttempts()])
-      .then(([s, a]) => {
+    Promise.allSettled([getAgentSessions(), getQuizAttempts(), getDocuments()])
+      .then(([sRes, aRes, dRes]) => {
         if (!mounted) return;
-        setSessions(Array.isArray(s) ? s : []);
-        setAttempts(Array.isArray(a) ? a : []);
-      })
-      .catch((e) => {
-        if (!mounted) return;
-        setError(e?.response?.data?.detail || e?.message || "Failed to load data");
+        setSessions(sRes.status === "fulfilled" && Array.isArray(sRes.value) ? sRes.value : []);
+        setAttempts(aRes.status === "fulfilled" && Array.isArray(aRes.value) ? aRes.value : []);
+        setDocuments(dRes.status === "fulfilled" && Array.isArray(dRes.value) ? dRes.value : []);
       })
       .finally(() => { if (mounted) setLoading(false); });
     return () => { mounted = false; };
@@ -236,18 +236,18 @@ export default function Dashboard() {
           </div>
           <div style={{ display: "flex", gap: "0.5rem", flexShrink: 0 }}>
             <button
-              onClick={() => nav("/session")}
+              onClick={() => nav("/setup")}
               className="btn-primary"
               style={{ gap: "0.35rem", fontSize: "0.85rem" }}
             >
-              <FiPlus size={15} /> New Session
+              <FiUploadCloud size={15} /> New Setup
             </button>
             <button
-              onClick={() => nav("/onboarding")}
+              onClick={() => nav("/session")}
               className="btn-secondary"
               style={{ gap: "0.35rem", fontSize: "0.85rem" }}
             >
-              <FiLayers size={14} /> Setup
+              <FiPlus size={14} /> New Session
             </button>
           </div>
         </div>
@@ -299,8 +299,8 @@ export default function Dashboard() {
               marginBottom: "1.5rem",
             }}
           >
-            <StatCard icon={FiMessageSquare} label="Total Sessions" value={`${sessions.length}`} accent="#6366f1" index={0} />
-            <StatCard icon={FiActivity} label="Active Now" value={`${activeSessions}`} accent="#10b981" index={1} />
+            <StatCard icon={FiFile} label="Uploaded Files" value={`${documents.length}`} accent="#06b6d4" index={0} />
+            <StatCard icon={FiMessageSquare} label="Total Sessions" value={`${sessions.length}`} accent="#6366f1" index={1} />
             <StatCard icon={FiAward} label="Quizzes Taken" value={`${attempts.length}`} accent="#a855f7" index={2} />
             <StatCard icon={FiTrendingUp} label="Avg Score" value={avgScore} accent="#f59e0b" index={3} />
           </motion.div>
@@ -368,6 +368,110 @@ export default function Dashboard() {
                 {action.onClick && <FiArrowUpRight size={14} style={{ color: "var(--color-text-dim)", flexShrink: 0 }} />}
               </div>
             ))}
+          </motion.div>
+
+          {/* ── Uploaded Files Panel ── */}
+          <motion.div
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.32 }}
+            style={{
+              borderRadius: "var(--radius-xl)",
+              border: "1px solid var(--color-border)",
+              background: "rgba(14,14,18,0.75)",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+              marginBottom: "1rem",
+            }}
+          >
+            <div
+              style={{
+                padding: "1rem 1.2rem",
+                borderBottom: "1px solid var(--color-border)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                background: "rgba(18,18,24,0.4)",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <div style={{ width: "1.6rem", height: "1.6rem", borderRadius: "0.4rem", display: "grid", placeItems: "center", background: "rgba(6,182,212,0.1)", color: "#06b6d4" }}>
+                  <FiFile size={13} />
+                </div>
+                <h2 style={{ fontSize: "0.92rem", fontWeight: 700, color: "var(--color-text)" }}>
+                  Uploaded Files
+                </h2>
+              </div>
+              <span className="badge">{documents.length}</span>
+            </div>
+            <div style={{ padding: "0.6rem", overflowY: "auto", maxHeight: "20rem" }}>
+              {!documents.length ? (
+                <div
+                  style={{
+                    margin: "1rem",
+                    borderRadius: "var(--radius-lg)",
+                    border: "1px dashed var(--color-border-strong)",
+                    background: "rgba(22,22,28,0.4)",
+                    padding: "2.5rem 1rem",
+                    textAlign: "center",
+                  }}
+                >
+                  <div style={{ width: "2.5rem", height: "2.5rem", borderRadius: "0.6rem", display: "grid", placeItems: "center", background: "rgba(6,182,212,0.1)", margin: "0 auto 0.65rem" }}>
+                    <FiUploadCloud size={18} style={{ color: "#06b6d4" }} />
+                  </div>
+                  <div style={{ fontSize: "0.9rem", fontWeight: 600, color: "var(--color-text)", marginBottom: "0.25rem" }}>No files uploaded yet</div>
+                  <p style={{ fontSize: "0.78rem", color: "var(--color-text-muted)", maxWidth: "18rem", margin: "0 auto 0.85rem" }}>
+                    Upload a PDF to generate a summary and learning roadmap.
+                  </p>
+                  <button onClick={() => nav("/setup")} className="btn-primary" style={{ fontSize: "0.78rem", padding: "0.45rem 1rem" }}>
+                    <FiUploadCloud size={13} /> Upload PDF
+                  </button>
+                </div>
+              ) : (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "0.5rem" }}>
+                  {documents.map((d) => (
+                    <div
+                      key={d.id}
+                      onClick={() => nav(`/summary/${d.id}`)}
+                      style={{
+                        borderRadius: "var(--radius-md)",
+                        border: "1px solid var(--color-border)",
+                        background: "rgba(18,18,24,0.45)",
+                        padding: "0.85rem 1rem",
+                        cursor: "pointer",
+                        transition: "all 180ms ease",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = "rgba(28,28,36,0.55)";
+                        e.currentTarget.style.borderColor = "rgba(6,182,212,0.25)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "rgba(18,18,24,0.45)";
+                        e.currentTarget.style.borderColor = "var(--color-border)";
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                        <div style={{ width: "2.2rem", height: "2.2rem", borderRadius: "0.5rem", display: "grid", placeItems: "center", background: "rgba(6,182,212,0.1)", flexShrink: 0 }}>
+                          <FiFile size={15} style={{ color: "#06b6d4" }} />
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--color-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {d.filename}
+                          </div>
+                          <div style={{ fontSize: "0.68rem", color: "var(--color-text-dim)", marginTop: "0.15rem", display: "flex", gap: "0.4rem", alignItems: "center" }}>
+                            <span>{d.page_count} pages</span>
+                            <span style={{ opacity: 0.3 }}>·</span>
+                            <span>{fmtDate(d.created_at)}</span>
+                          </div>
+                        </div>
+                        <FiChevronRight size={14} style={{ color: "var(--color-text-dim)", flexShrink: 0 }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </motion.div>
 
           {/* ── Main Content ── */}
